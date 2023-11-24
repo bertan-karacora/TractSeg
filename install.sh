@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# Setup git user, ssh keys, clone repo, apt update, apt upgrade etc.
+# For local development:
+# Fork repository
+# Install git, configure git and ssh keys / access token / ...
+# Clone repo
 
 cat requirements_apt.txt | xargs sudo apt install -y
 python3 -m venv .venv
@@ -16,3 +19,7 @@ cd mrtrix3
 ./configure
 ./build
 ./set_path
+
+# You probably also need to install FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSL).
+# For this, register yourself at their website.
+# python fslinstaller.py
