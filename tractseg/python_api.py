@@ -196,7 +196,7 @@ def run_tractseg(data, output_type="tract_segmentation",
                 Config.WEIGHTS_PATH = exp_utils.get_best_weights_path(
                     join(C.EXP_PATH, manual_exp_name_peaks), True)
             else:
-                Config.WEIGHTS_PATH = join(C.HOME, weights[part])
+                Config.WEIGHTS_PATH = join(C.WEIGHTS_DIR, weights[part])
             print("Loading weights from: {}".format(Config.WEIGHTS_PATH))
             Config.CLASSES = "All_" + part
             Config.NR_OF_CLASSES = 3 * len(dataset_specific_utils.get_bundle_names(Config.CLASSES)[1:])
