@@ -71,8 +71,6 @@ def get_config_file():
 
 
 class SystemConfig:
-    TRACT_SEG_HOME = os.path.join(os.path.expanduser('~'), '.tractseg')
-
     paths = get_config_file()
 
     if "working_dir" in paths:  # check if config file
@@ -90,7 +88,7 @@ class SystemConfig:
     elif "weights_dir" in paths:
         WEIGHTS_DIR = paths["weights_dir"]
     else:
-        WEIGHTS_DIR = TRACT_SEG_HOME
+        WEIGHTS_DIR = join(HOME, "weights")
 
     if os.environ.get("TRACTSEG_DATA_DIR") is not None:  # check if environment variable
         DATA_PATH = os.environ.get("TRACTSEG_DATA_DIR")

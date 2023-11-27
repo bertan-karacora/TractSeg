@@ -12,10 +12,10 @@ from tractseg.libs import utils
 def main():
     parser = argparse.ArgumentParser(description="Download all pretrained weights (instead of them being downloaded "
                                                  "automatically on the fly when needed). Will download them to"
-                                                 "`~/.tractseg/` (default). If you want them to be downloaded to a "
+                                                 "`weights/` (default). If you want them to be downloaded to a "
                                                  "different directory you can specify it by adding "
                                                  "`weights_dir=absolute_path_to_where_you_want_it` "
-                                                 "to `~/.tractseg/config.txt`",
+                                                 "to `config.txt`",
                                         epilog="Written by Jakob Wasserthal")
     args = parser.parse_args()
 

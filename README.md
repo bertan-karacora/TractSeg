@@ -383,12 +383,10 @@ Especially if image resolution is low parts of the CA can get lost during downsa
 
 #### Can I save the pretrained weights at a different location?
 
-Per default the pretrained weights will be downloaded to and loaded from `~/.tractseg/`. You can change this directory
-by adding `weights_dir=/absolute/path_to_where/you_want_it` to `~/.tractseg/config.txt` in a new line (if the file does
-not exist yet you have to create it).  
+Per default the pretrained weights will be downloaded to and loaded from `weights/`.
 Normally the pretrained weights will automatically be downloaded in the background right when they are needed. In some
 cases you might want to download all of them at once. To do so you can simply run `download_all_pretrained_weights` and
-the weights will be download to `~/.tractseg/` or the location you specified in `~/.tractseg/config.txt`.
+the weights will be download to `weights/`.
 
 #### Did I install the prerequisites correctly?
 
@@ -449,7 +447,7 @@ details: [82](https://github.com/MIC-DKFZ/TractSeg/issues/82),
 bounding box). Adapt the data pathes in `tractseg/data/preprocessing.py` to fit your data (look for `#todo: adapt`
 inside of the file.)
 7. Adapt the file `tractseg/config/custom/My_custom_experiment.py`.
-8. Create a file `~/.tractseg/config.txt`. This contains the path to your data directory `working_dir=XXX`, e.g.
+8. Create a file `config.txt`. This contains the path to your data directory `working_dir=XXX`, e.g.
 `working_dir=custom_path`.
 9. Adapt `tractseg.data.dataset_specific_utils.get_bundle_names()` with the bundles you use in your reference data.
 10. Adapt `tractseg.data.dataset_specific_utils.get_labels_filename()` with the names of your label files.

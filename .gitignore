@@ -131,3 +131,9 @@ dmypy.json
 # Explicit dependencies
 mrtrix3/
 fsl/
+
+# Data
+data/
+
+# Weights
+weights/
