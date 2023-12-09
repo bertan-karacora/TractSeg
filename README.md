@@ -79,7 +79,7 @@ like 7GB.
 
 To segment the bundles on a Diffusion Nifti image run the following command. (Diffusion.bvals and Diffusion.bvecs have to be in the same directory
 as the input image.)
-(You can use the example image provided in this repository under `examples`.)  
+(You can use the example image provided in this repository under `resources/examples`.)  
 
 ```
 TractSeg -i Diffusion.nii.gz --raw_diffusion_input
@@ -309,7 +309,7 @@ You can use the option `--tracking_format` to define the file format of the stre
 
 For best results the input image must have the same "orientation" as the Human Connectome Project data (MNI space)
 (LEFT must be on the same side as LEFT of the HCP data) and have isotropic spacing.
-If the image orientation and the gradient orientation of your data is the same as in `examples/Diffusion.nii.gz`
+If the image orientation and the gradient orientation of your data is the same as in `resources/examples/Diffusion.nii.gz`
 you are fine. Otherwise you should use `fslreorient2std` or rigidly register your image to MNI space (the brains
 do not have to be perfectly aligned but must have the same LEFT/RIGHT orientation).
 You can use the following FSL commands to rigidly register your image to MNI space (uses
