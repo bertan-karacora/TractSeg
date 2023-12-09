@@ -1,16 +1,14 @@
-from setuptools import Extension, setup, find_packages
+import setuptools
 
-setup(
+setuptools.setup(
     name="TractSeg",
     version="2.9",
     description="Fast and accurate segmentation of white matter bundles",
-    long_description="See README.md on github for more details.",
-    url="https://github.com/MIC-DKFZ/TractSeg/",
-    author="Jakob Wasserthal",
-    author_email="j.wasserthal@dkfz-heidelberg.de",
-    python_requires=">=3.5",
+    long_description="See README.md for more details.",
+    url="https://github.com/bertan-karacora/TractSeg/",
+    python_requires=">=3.8",
     license="Apache 2.0",
-    packages=find_packages(),
+    packages=setuptools.find_packages(),
     install_requires=[
         "future",
         "numpy",
@@ -27,6 +25,7 @@ setup(
         "seaborn",
         "requests",
         "xvfbwrapper",
+        "pyyaml",
     ],
     zip_safe=False,
     classifiers=[
@@ -49,5 +48,10 @@ setup(
         "bin/get_image_spacing",
         "bin/remove_negative_values",
     ],
-    package_data={"tractseg.resources": ["MNI_FA_template.nii.gz", "random_forest_peak_orientation_detection.pkl"]},
+    package_data={
+        "tractseg.resources": [
+            "MNI_FA_template.nii.gz",
+            "random_forest_peak_orientation_detection.pkl",
+        ],
+    },
 )

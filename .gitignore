@@ -131,9 +131,13 @@ dmypy.json
 # Explicit dependencies
 mrtrix3/
 fsl/
+batchgenerators/
 
 # Data
 data/
+
+# Output
+out/
 
 # Weights
 weights/
