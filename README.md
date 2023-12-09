@@ -460,7 +460,7 @@ inside of the file.)
 To build a docker container with all dependencies run the following command in project root:
 
 ```
-sudo docker build -t tractseg_container -f Dockerfile_CPU .
+sudo docker build -t tractseg_container -f env/Dockerfile_CPU .
 ```
 
 > NOTE: With docker the option `--plot3D` of the command `plot_tractometry_results` might not work.

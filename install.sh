@@ -7,14 +7,14 @@
 
 sudo add-apt-repository ppa:deadsnakes/
 sudo apt update
-cat requirements_apt.txt | xargs sudo apt install -y
+cat env/requirements_apt.txt | xargs sudo apt install -y
 
 python3.8 -m venv .venv
 source .venv/bin/activate
 
 pip install --upgrade pip
 pip install wheel
-pip install -r requirements_pip.txt
+pip install -r env/requirements_pip.txt
 pip install --no-cache-dir -e .
 
 git clone https://github.com/MRtrix3/mrtrix3.git
