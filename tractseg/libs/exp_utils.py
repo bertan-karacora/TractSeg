@@ -1,8 +1,3 @@
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import glob
 import os
 import re
@@ -13,7 +8,7 @@ from pprint import pprint
 
 import numpy as np
 
-from tractseg.libs.system_config import SystemConfig as C
+import tractseg.config as config
 
 
 def create_experiment_folder(experiment_name, multi_parent_path, train):
@@ -24,30 +19,30 @@ def create_experiment_folder(experiment_name, multi_parent_path, train):
     if multi_parent_path != "":
         dir = join(multi_parent_path, experiment_name)
     else:
-        dir = join(C.EXP_PATH, experiment_name)
+        dir = join(config.PATH_DIR_EXP, experiment_name)
 
     if not train:
         if os.path.exists(dir):
             return dir
         else:
-            sys.exit('Testing target directory does not exist!')
+            sys.exit("Testing target directory does not exist!")
     else:
         for i in range(40):
             if os.path.exists(dir):
-                tailing_numbers = re.findall('x([0-9]+)$', experiment_name)  # find tailing numbers that start with a x
+                tailing_numbers = re.findall("x([0-9]+)$", experiment_name)  # find tailing numbers that start with a x
                 if len(tailing_numbers) > 0:
                     num = int(tailing_numbers[0])
                     if num < 10:
-                        experiment_name = experiment_name[:-1] + str(num+1)
+                        experiment_name = experiment_name[:-1] + str(num + 1)
                     else:
-                        experiment_name = experiment_name[:-2] + str(num+1)
+                        experiment_name = experiment_name[:-2] + str(num + 1)
                 else:
                     experiment_name += "_x2"
 
                 if multi_parent_path != "":
                     dir = join(multi_parent_path, experiment_name)
                 else:
-                    dir = join(C.EXP_PATH, experiment_name)
+                    dir = join(config.PATH_DIR_EXP, experiment_name)
             else:
                 os.makedirs(dir)
                 break
@@ -57,15 +52,6 @@ def create_experiment_folder(experiment_name, multi_parent_path, train):
 def make_dir(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
-
-
-def print_Configs(Config):
-    dict = {attr: getattr(Config, attr) for attr in dir(Config)
-            if not callable(getattr(Config, attr)) and not attr.startswith("__")}
-    dict.pop("TRAIN_SUBJECTS", None)
-    dict.pop("TEST_SUBJECTS", None)
-    dict.pop("VALIDATE_SUBJECTS", None)
-    pprint(dict)
 
 
 def get_best_weights_path(exp_path, load_weights):
@@ -143,14 +129,17 @@ def print_verbose(verbose, text):
         print(text)
 
 
-def get_correct_labels_type(Config):
-    if Config.LABELS_TYPE == "int":
-        Config.LABELS_TYPE = np.int16
-    elif Config.LABELS_TYPE == "float":
-        Config.LABELS_TYPE = np.float32
+def get_correct_labels_type():
+    mapping_labels_type = {
+        "int": np.int16,
+        "float": np.float32,
+    }
+
+    if config.LABELS_TYPE in mapping_labels_type:
+        label_type = mapping_labels_type[config.LABELS_TYPE]
     else:
-        raise ValueError("Config.LABELS_TYPE not recognized")
-    return Config
+        raise ValueError(f"ERROR: config.labels_type not recognized: {config.LABELS_TYPE}")
+    return label_type
 
 
 def get_manual_exp_name_peaks(manual_exp_name, part):
@@ -164,19 +153,3 @@ def get_manual_exp_name_peaks(manual_exp_name, part):
         return manual_exp_name_parts[0] + part[-1] + manual_exp_name_parts[1]
     else:
         return manual_exp_name
-
-
-def load_config_from_txt(path):
-
-    class Struct:
-        def __init__(self, **entries):
-            self.__dict__.update(entries)
-
-    config_str = open(path, "r").read()
-    clean_str = ""
-    for line in config_str.splitlines():
-        if not line.startswith("Average Epoch time:"):
-            clean_str += line
-    config_dict = ast.literal_eval(clean_str)
-    config_obj = Struct(**config_dict)
-    return config_obj

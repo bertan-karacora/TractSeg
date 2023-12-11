@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -9,6 +8,7 @@ from joblib import Parallel, delayed
 from os.path import join
 from pkg_resources import resource_filename
 
+from pathlib import Path
 import psutil
 import numpy as np
 import nibabel as nib
@@ -16,7 +16,7 @@ from scipy import ndimage
 from scipy.ndimage import binary_dilation
 from dipy.align.imaffine import AffineMap
 
-from tractseg.libs.system_config import SystemConfig as C
+import tractseg.config as config
 from tractseg.libs import exp_utils
 from tractseg.data import dataset_specific_utils
 
@@ -39,34 +39,38 @@ def pad_3d_image(image, pad_size, pad_value=None):
     if pad_value is None:
         pad_value = image[0, 0, 0]
     new_image = np.ones(new_shape) * pad_value
-    new_image[int(pad_size[0]/2.) : int(pad_size[0]/2.)+image_shape[0],
-              int(pad_size[1]/2.) : int(pad_size[1]/2.)+image_shape[1],
-              int(pad_size[2]/2.) : int(pad_size[2]/2.)+image_shape[2]] = image
+    new_image[
+        int(pad_size[0] / 2.0) : int(pad_size[0] / 2.0) + image_shape[0],
+        int(pad_size[1] / 2.0) : int(pad_size[1] / 2.0) + image_shape[1],
+        int(pad_size[2] / 2.0) : int(pad_size[2] / 2.0) + image_shape[2],
+    ] = image
     return new_image
 
 
 def pad_4d_image(image, pad_size, pad_value=None):
     """
-        IMPORTANT: numbers in pad_size should be even numbers; they are always divided by 2 and then rounded to floor !
-        -> pad 3 -> would result in padding_left: 1 and padding_right: 1  => 1 gets lost
+    IMPORTANT: numbers in pad_size should be even numbers; they are always divided by 2 and then rounded to floor !
+    -> pad 3 -> would result in padding_left: 1 and padding_right: 1  => 1 gets lost
 
-        Args:
-            image: 4D array
-            pad_size: must be a np array with 4 entries, one for each dimension of the image
-            pad_value: value for padding. Use 0 if None.
+    Args:
+        image: 4D array
+        pad_size: must be a np array with 4 entries, one for each dimension of the image
+        pad_value: value for padding. Use 0 if None.
 
-        Returns:
-            padded array
+    Returns:
+        padded array
     """
     image_shape = image.shape
     new_shape = np.array(list(image_shape)) + pad_size
     if pad_value is None:
         pad_value = image[0, 0, 0, 0]
     new_image = np.ones(new_shape) * pad_value
-    new_image[int(pad_size[0]/2.) : int(pad_size[0]/2.) + image_shape[0],
-              int(pad_size[1]/2.) : int(pad_size[1]/2.) + image_shape[1],
-              int(pad_size[2]/2.) : int(pad_size[2]/2.) + image_shape[2],
-              int(pad_size[3]/2.) : int(pad_size[3]/2.) + image_shape[3]] = image
+    new_image[
+        int(pad_size[0] / 2.0) : int(pad_size[0] / 2.0) + image_shape[0],
+        int(pad_size[1] / 2.0) : int(pad_size[1] / 2.0) + image_shape[1],
+        int(pad_size[2] / 2.0) : int(pad_size[2] / 2.0) + image_shape[2],
+        int(pad_size[3] / 2.0) : int(pad_size[3] / 2.0) + image_shape[3],
+    ] = image
     return new_image
 
 
@@ -90,10 +94,12 @@ def pad_4d_image_left(image, pad_size, new_shape, pad_value=None):
     if pad_value is None:
         pad_value = image[0, 0, 0, 0]
     new_image = np.ones(new_shape).astype(image.dtype) * pad_value
-    new_image[int(pad_size[0]) : int(pad_size[0]) + image_shape[0],
-              int(pad_size[1]) : int(pad_size[1]) + image_shape[1],
-              int(pad_size[2]) : int(pad_size[2]) + image_shape[2],
-              int(pad_size[3]) : int(pad_size[3]) + image_shape[3]] = image
+    new_image[
+        int(pad_size[0]) : int(pad_size[0]) + image_shape[0],
+        int(pad_size[1]) : int(pad_size[1]) + image_shape[1],
+        int(pad_size[2]) : int(pad_size[2]) + image_shape[2],
+        int(pad_size[3]) : int(pad_size[3]) + image_shape[3],
+    ] = image
     return new_image
 
 
@@ -106,17 +112,17 @@ def remove_small_blobs(img, threshold=1, debug=True):
     # mask, number_of_blobs = ndimage.label(img, structure=np.ones((3, 3, 3)))
     mask, number_of_blobs = ndimage.label(img)
     if debug:
-        print('Number of blobs before: ' + str(number_of_blobs))
+        print("Number of blobs before: " + str(number_of_blobs))
     counts = np.bincount(mask.flatten())  # number of pixels in each blob
 
-    #If only one blob (only background) abort because nothing to remove
+    # If only one blob (only background) abort because nothing to remove
     if len(counts) <= 1:
         return img
 
     # Find largest blob, to make sure we do not remove everything
     #   Largest blob is actually the second largest, because largest is the background
     second_largest_blob_value = np.sort(counts)[-2]
-    second_largest_blob_idx = np.where(counts==second_largest_blob_value)[0][0]
+    second_largest_blob_idx = np.where(counts == second_largest_blob_value)[0][0]
     if debug:
         print(counts)
 
@@ -130,7 +136,7 @@ def remove_small_blobs(img, threshold=1, debug=True):
 
     if debug:
         mask_after, number_of_blobs_after = ndimage.label(mask)
-        print('Number of blobs after: ' + str(number_of_blobs_after))
+        print("Number of blobs after: " + str(number_of_blobs_after))
 
     return mask
 
@@ -146,15 +152,14 @@ def postprocess_segmentations(data, bundles, blob_thr=50, hole_closing=None):
 
     data_new = []
     for idx, bundle in enumerate(bundles):
-        data_single = data[:,:,:,idx]
+        data_single = data[:, :, :, idx]
 
-        #Fill holes
+        # Fill holes
         if hole_closing is not None and bundle not in skip_hole_closing:
             size = hole_closing  # Working as expected (size 2-3 good value)
             if bundle in increased_hole_closing:
                 size *= 2
-            data_single = ndimage.binary_closing(data_single,
-                                                 structure=np.ones((size, size, size))).astype(data_single.dtype)
+            data_single = ndimage.binary_closing(data_single, structure=np.ones((size, size, size))).astype(data_single.dtype)
 
         # Remove small blobs
         if blob_thr is not None:
@@ -166,17 +171,12 @@ def postprocess_segmentations(data, bundles, blob_thr=50, hole_closing=None):
 
 
 def has_two_big_blobs(img, bundle, debug=True):
-
-    big_cluster_threshold = {
-        "CA": 200,
-        "FX_left": 100,
-        "FX_right": 100
-    }
+    big_cluster_threshold = {"CA": 200, "FX_left": 100, "FX_right": 100}
 
     mask, number_of_blobs = ndimage.label(img)
     counts = np.bincount(mask.flatten())  # number of pixels in each blob
 
-    #If only one blob (only background) abort because nothing to remove
+    # If only one blob (only background) abort because nothing to remove
     if len(counts) <= 1:
         return False
 
@@ -213,8 +213,7 @@ def bundle_specific_postprocessing(data, bundles):
             data_single = data_single > thr
 
             size = 6
-            data_single = ndimage.binary_closing(data_single,
-                                                 structure=np.ones((size, size, size)))  # returns bool
+            data_single = ndimage.binary_closing(data_single, structure=np.ones((size, size, size)))  # returns bool
         else:
             data_single = data_single > 0.5
 
@@ -224,7 +223,6 @@ def bundle_specific_postprocessing(data, bundles):
 
 
 def resize_first_three_dims(img, order=0, zoom=0.62, nr_cpus=-1):
-
     def _process_gradient(grad_idx):
         return ndimage.zoom(img[:, :, :, grad_idx], zoom, order=order)
 
@@ -237,7 +235,7 @@ def resize_first_three_dims_singleCore(img, order=0, zoom=0.62, nr_cpus=-1):
     # Runtime 35ms
     img_sm = []
     for grad in range(img.shape[3]):
-        #order: The order of the spline interpolation
+        # order: The order of the spline interpolation
         #  order=0 -> nearest interpolation; order=1 -> linear or bilinear interpolation?
         img_sm.append(ndimage.zoom(img[:, :, :, grad], zoom, order=order))
     img_sm = np.array(img_sm)
@@ -252,7 +250,7 @@ def resize_first_three_dims_NUMPY(img, order=0, zoom=0.62):
     """
     img_sm = None
     for grad in range(img.shape[3]):
-        #order: The order of the spline interpolation
+        # order: The order of the spline interpolation
         #  order=0 -> nearest interpolation; order=1 -> linear or bilinear interpolation?
         grad_sm = ndimage.zoom(img[:, :, :, grad], zoom, order=order)
         if grad == 0:
@@ -267,13 +265,13 @@ def create_multilabel_mask(classes, subject, labels_type=np.int16, dataset_folde
     """
     bundles = dataset_specific_utils.get_bundle_names(classes)
 
-    #Masks sind immer HCP_highRes (später erst downsample)
+    # Masks sind immer HCP_highRes (später erst downsample)
     mask_ml = np.zeros((145, 174, 145, len(bundles)))
-    background = np.ones((145, 174, 145))   # everything that contains no bundle
+    background = np.ones((145, 174, 145))  # everything that contains no bundle
 
     # first bundle is background -> already considered by setting np.ones in the beginning
     for idx, bundle in enumerate(bundles[1:]):
-        mask = nib.load(join(C.HOME, dataset_folder, subject, labels_folder, bundle + ".nii.gz"))
+        mask = nib.load(Path(config.PATH_CWD) / dataset_folder, subject, labels_folder, bundle + ".nii.gz")
         mask_data = mask.get_fdata().astype(np.uint8)
         mask_ml[:, :, :, idx + 1] = mask_data
         background[mask_data == 1] = 0  # remove this bundle from background
@@ -285,7 +283,7 @@ def create_multilabel_mask(classes, subject, labels_type=np.int16, dataset_folde
 def save_multilabel_img_as_multiple_files(classes, img, affine, path, name="bundle_segmentations"):
     bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
     for idx, bundle in enumerate(bundles):
-        img_seg = nib.Nifti1Image(img[:,:,:,idx], affine)
+        img_seg = nib.Nifti1Image(img[:, :, :, idx], affine)
         exp_utils.make_dir(join(path, name))
         nib.save(img_seg, join(path, name, bundle + ".nii.gz"))
 
@@ -293,7 +291,7 @@ def save_multilabel_img_as_multiple_files(classes, img, affine, path, name="bund
 def save_multilabel_img_as_multiple_files_peaks(flip_output_peaks, classes, img, affine, path, name="TOM"):
     bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
     for idx, bundle in enumerate(bundles):
-        data = img[:, :, :, (idx*3):(idx*3)+3]
+        data = img[:, :, :, (idx * 3) : (idx * 3) + 3]
 
         if flip_output_peaks:
             data[:, :, :, 2] *= -1  # flip z Axis for correct view in MITK
@@ -309,7 +307,7 @@ def save_multilabel_img_as_multiple_files_peaks(flip_output_peaks, classes, img,
 def save_multilabel_img_as_multiple_files_endings(classes, img, affine, path, name="endings_segmentations"):
     bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
     for idx, bundle in enumerate(bundles):
-        img_seg = nib.Nifti1Image(img[:,:,:,idx], affine)
+        img_seg = nib.Nifti1Image(img[:, :, :, idx], affine)
         exp_utils.make_dir(join(path, name))
         nib.save(img_seg, join(path, name, bundle + ".nii.gz"))
 
@@ -402,7 +400,7 @@ def probs_to_binary_bundle_specific(seg, bundles):
             thr = bundles_thresholds[bundle]
         else:
             thr = 0.5
-        segs_binary.append(seg[:,:,:,idx] > thr)
+        segs_binary.append(seg[:, :, :, idx] > thr)
 
     return np.array(segs_binary).transpose(1, 2, 3, 0).astype(np.uint8)
 
@@ -472,14 +470,14 @@ def enforce_shape(data, target_shape=(91, 109, 91, 9)):
 
     # cut if too much
     if ss[0] > ts[0]:
-        data = data[ss[0] - ts[0]:, :, :]
+        data = data[ss[0] - ts[0] :, :, :]
     if ss[1] > ts[1]:
-        data = data[:, ss[1] - ts[1]:, :]
+        data = data[:, ss[1] - ts[1] :, :]
     if ss[2] > ts[2]:
-        data = data[:, :, ss[2] - ts[2]:]
+        data = data[:, :, ss[2] - ts[2] :]
 
     # pad with zero if too small
-    data_new[:data.shape[0], :data.shape[1], :data.shape[2]] = data
+    data_new[: data.shape[0], : data.shape[1], : data.shape[2]] = data
     return data_new
 
 
@@ -495,7 +493,7 @@ def apply_rotation_to_peaks(peaks, affine):
 
     # Get rotation component of affine transformation
     len = np.linalg.norm(affine, axis=0)
-    rotation = np.zeros((3,3))
+    rotation = np.zeros((3, 3))
     rotation[:, 0] = affine[:, 0] / len[0]
     rotation[:, 1] = affine[:, 1] / len[1]
     rotation[:, 2] = affine[:, 2] / len[2]
@@ -526,10 +524,7 @@ def change_spacing_4D(img_in, new_spacing=1.25):
 
     new_data = []
     for i in range(data.shape[3]):
-        affine_map = AffineMap(np.eye(4),
-                               new_shape, new_affine,
-                               old_shape, img_in.affine
-                               )
+        affine_map = AffineMap(np.eye(4), new_shape, new_affine, old_shape, img_in.affine)
         # Generally "nearest" a bit better results than "linear" interpolation
         res = affine_map.transform(data[:, :, :, i], interp="nearest")
         new_data.append(res)
@@ -545,11 +540,11 @@ def flip_peaks(data, axis="x"):
     Will flip sign of every third element in the 4th dimension.
     """
     if axis == "x":
-        data[:, :, :, list(range(0,data.shape[3],3))] *= -1
+        data[:, :, :, list(range(0, data.shape[3], 3))] *= -1
     elif axis == "y":
-        data[:, :, :, list(range(1,data.shape[3],3))] *= -1
+        data[:, :, :, list(range(1, data.shape[3], 3))] *= -1
     elif axis == "z":
-        data[:, :, :, list(range(2,data.shape[3],3))] *= -1
+        data[:, :, :, list(range(2, data.shape[3], 3))] *= -1
     return data
 
 
@@ -609,7 +604,7 @@ def flip_affine(affine, flip_axis_list, data_shape):
     """
     apply flipping to affine
 
-    When flipping the data array, then we have to do the following to the 
+    When flipping the data array, then we have to do the following to the
     affine to undo the flipping of data array. (in the image viewer the
     image will look the same)
     """
@@ -661,17 +656,17 @@ def flip_peaks_to_correct_orientation_if_needed(peaks_input, do_flip=False):
         print("INFO: Peak orientation check not working on python 2, therefore it is skipped.")
         return peaks_input.get_fdata(), None
     else:
-        peaks = change_spacing_4D(peaks_input, new_spacing=2.).get_fdata()
-        #shape the classifier has been trained with
+        peaks = change_spacing_4D(peaks_input, new_spacing=2.0).get_fdata()
+        # shape the classifier has been trained with
         peaks = enforce_shape(peaks, target_shape=(91, 109, 91, 9))
 
-        peaks_x = peaks[int(peaks.shape[0] / 2.), :, :, :]
-        peaks_y = peaks[:, int(peaks.shape[1] / 2.), :, :]
-        peaks_z = peaks[:, :, int(peaks.shape[2] / 2.), :]
+        peaks_x = peaks[int(peaks.shape[0] / 2.0), :, :, :]
+        peaks_y = peaks[:, int(peaks.shape[1] / 2.0), :, :]
+        peaks_z = peaks[:, :, int(peaks.shape[2] / 2.0), :]
         X = [list(peaks_x.flatten()) + list(peaks_y.flatten()) + list(peaks_z.flatten())]
         X = np.nan_to_num(X)
 
-        random_forest_path = resource_filename('tractseg.resources', 'random_forest_peak_orientation_detection.pkl')
+        random_forest_path = resource_filename("tractseg.resources", "random_forest_peak_orientation_detection.pkl")
         clf = joblib.load(random_forest_path)
         predicted_label = clf.predict(X)[0]
         # labels:

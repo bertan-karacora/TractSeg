@@ -7,7 +7,7 @@ import nibabel as nib
 from joblib import Parallel, delayed
 import numpy as np
 
-from tractseg.libs.system_config import SystemConfig as C
+import tractseg.config as config
 from tractseg.data.subjects import get_all_subjects
 from tractseg.libs import img_utils
 
@@ -20,7 +20,6 @@ DATASET_FOLDER_PREPROC = "biobank_preproc"
 
 
 def create_preprocessed_files(subject):
-
     # filenames_data = ["270g_125mm_bedpostx_peaks_scaled", "32g_125mm_bedpostx_peaks_scaled"]
     # filenames_seg = ["bundle_masks_autoPTX_dm"]
 
@@ -31,13 +30,13 @@ def create_preprocessed_files(subject):
 
     for idx, filename in enumerate(filenames_data):
         print(filename)
-        path = join(C.DATA_PATH, DATASET_FOLDER_PREPROC, subject, filename + ".nii.gz")
+        path = join(config.PATH_DATA, DATASET_FOLDER_PREPROC, subject, filename + ".nii.gz")
         data = nib.load(path).get_fdata()
         # _ = img_utils.peak_image_to_tensor_image(data)
 
     for filename in filenames_seg:
         print(filename)
-        data = nib.load(join(C.DATA_PATH, DATASET_FOLDER_PREPROC, subject, filename + ".nii.gz")).get_fdata()
+        data = nib.load(join(config.PATH_DATA, DATASET_FOLDER_PREPROC, subject, filename + ".nii.gz")).get_fdata()
 
 
 if __name__ == "__main__":

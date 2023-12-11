@@ -1,10 +1,10 @@
 import os
-import time 
+import time
 
 import requests
 import numpy as np
 
-from tractseg.libs.system_config import SystemConfig as C
+import tractseg.config as config
 
 
 def invert_x_and_y(affineMatrix):
@@ -15,10 +15,10 @@ def invert_x_and_y(affineMatrix):
     to do it for non-diagonal elements) -> not done yet
     """
     newAffine = affineMatrix.copy()
-    newAffine[0,0] = newAffine[0,0] * -1
-    newAffine[1,1] = newAffine[1,1] * -1
-    newAffine[0,3] = newAffine[0,3] * -1
-    newAffine[1,3] = newAffine[1,3] * -1
+    newAffine[0, 0] = newAffine[0, 0] * -1
+    newAffine[1, 1] = newAffine[1, 1] * -1
+    newAffine[0, 3] = newAffine[0, 3] * -1
+    newAffine[1, 3] = newAffine[1, 3] * -1
     return newAffine
 
 
@@ -26,7 +26,7 @@ def normalize_mean0_std1(data):
     """
     Normalizes along all axis for mean=0 and stddev=1
     """
-    out = np.array(data, dtype='float32', copy=True)
+    out = np.array(data, dtype="float32", copy=True)
 
     mean = data.mean()  # mean over all axis / over flattened array
     out -= mean
@@ -70,7 +70,7 @@ def chunks(l, n):
     Last chunk can be smaller.
     """
     for i in range(0, len(l), n):
-        yield l[i:i + n]
+        yield l[i : i + n]
 
 
 def flatten(l):
@@ -79,6 +79,7 @@ def flatten(l):
 
 def mem_usage(print_usage=True):
     import psutil
+
     process = psutil.Process()
     gb = process.memory_info().rss / 1e9
     gb = round(gb, 3)
@@ -87,16 +88,9 @@ def mem_usage(print_usage=True):
     return gb
 
 
-# def download_url(url, save_path, chunk_size=128):
-#     r = requests.get(url, stream=True)
-#     with open(save_path, 'wb') as f:
-#         for chunk in r.iter_content(chunk_size=chunk_size):
-#             f.write(chunk)
-
-
 def download_url(url, save_path):
     try:
-        with open(save_path, 'wb') as f:
+        with open(save_path, "wb") as f:
             with requests.get(url, stream=True) as r:
                 r.raise_for_status()
                 for chunk in r.iter_content(chunk_size=8192 * 16):
@@ -105,54 +99,51 @@ def download_url(url, save_path):
         raise e
 
 
-def download_pretrained_weights(experiment_type, dropout_sampling=False,
-                                part="Part1", tract_definition="TractQuerier+"):
-
+def download_pretrained_weights(experiment_type, dropout_sampling=False, part="Part1", tract_definition="TractQuerier+"):
     if experiment_type == "tract_segmentation" and tract_definition == "xtract":
-        weights_path_old = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_tract_segmentation_xtract_v0.npz')
-        weights_path = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_tract_segmentation_xtract_v1.npz')
+        weights_path_old = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_tract_segmentation_xtract_v0.npz")
+        weights_path = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_tract_segmentation_xtract_v1.npz")
         WEIGHTS_URL = "https://zenodo.org/record/3634539/files/best_weights_ep266.npz?download=1"
 
     elif experiment_type == "tract_segmentation" and tract_definition == "TractQuerier+":
-        weights_path_old = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_tract_segmentation_v2.npz')
-        weights_path = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_tract_segmentation_v3.npz')
+        weights_path_old = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_tract_segmentation_v2.npz")
+        weights_path = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_tract_segmentation_v3.npz")
         WEIGHTS_URL = "https://zenodo.org/record/3518348/files/best_weights_ep220.npz?download=1"
 
     elif experiment_type == "endings_segmentation":
-        weights_path_old = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_endings_segmentation_v3.npz')
-        weights_path = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_endings_segmentation_v4.npz')
+        weights_path_old = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_endings_segmentation_v3.npz")
+        weights_path = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_endings_segmentation_v4.npz")
         WEIGHTS_URL = "https://zenodo.org/record/3518331/files/best_weights_ep143.npz?download=1"
 
     elif experiment_type == "dm_regression" and tract_definition == "xtract":
-        weights_path_old = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_dm_regression_xtract_v0.npz')
-        weights_path = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_dm_regression_xtract_v1.npz')
+        weights_path_old = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_dm_regression_xtract_v0.npz")
+        weights_path = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_dm_regression_xtract_v1.npz")
         WEIGHTS_URL = "https://zenodo.org/record/3634549/files/best_weights_ep207.npz?download=1"
 
     elif experiment_type == "dm_regression" and tract_definition == "TractQuerier+":
-        weights_path_old = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_dm_regression_v1.npz')
-        weights_path = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_dm_regression_v2.npz')
+        weights_path_old = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_dm_regression_v1.npz")
+        weights_path = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_dm_regression_v2.npz")
         WEIGHTS_URL = "https://zenodo.org/record/3518346/files/best_weights_ep199.npz?download=1"
 
     elif experiment_type == "peak_regression" and part == "Part1":
-        weights_path_old = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_peak_regression_part1_v1.npz')
-        weights_path = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_peak_regression_part1_v2.npz')
+        weights_path_old = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_peak_regression_part1_v1.npz")
+        weights_path = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_peak_regression_part1_v2.npz")
         WEIGHTS_URL = "https://zenodo.org/record/3239216/files/best_weights_ep62.npz?download=1"
 
     elif experiment_type == "peak_regression" and part == "Part2":
-        weights_path_old = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_peak_regression_part2_v1.npz')
-        weights_path = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_peak_regression_part2_v2.npz')
+        weights_path_old = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_peak_regression_part2_v1.npz")
+        weights_path = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_peak_regression_part2_v2.npz")
         WEIGHTS_URL = "https://zenodo.org/record/3239220/files/best_weights_ep130.npz?download=1"
 
     elif experiment_type == "peak_regression" and part == "Part3":
-        weights_path_old = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_peak_regression_part3_v1.npz')
-        weights_path = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_peak_regression_part3_v2.npz')
+        weights_path_old = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_peak_regression_part3_v1.npz")
+        weights_path = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_peak_regression_part3_v2.npz")
         WEIGHTS_URL = "https://zenodo.org/record/3239221/files/best_weights_ep91.npz?download=1"
 
     elif experiment_type == "peak_regression" and part == "Part4":
-        weights_path_old = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_peak_regression_part4_v1.npz')
-        weights_path = os.path.join(C.WEIGHTS_DIR, 'pretrained_weights_peak_regression_part4_v2.npz')
+        weights_path_old = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_peak_regression_part4_v1.npz")
+        weights_path = os.path.join(config.PATH_DIR_WEIGHTS, "pretrained_weights_peak_regression_part4_v2.npz")
         WEIGHTS_URL = "https://zenodo.org/record/3239222/files/best_weights_ep148.npz?download=1"
-
 
     if os.path.exists(weights_path_old):
         os.remove(weights_path_old)
@@ -160,20 +151,20 @@ def download_pretrained_weights(experiment_type, dropout_sampling=False,
     if WEIGHTS_URL is not None and not os.path.exists(weights_path):
         print("Downloading pretrained weights (~140MB) ...")
         st = time.time()
-        if not os.path.exists(C.WEIGHTS_DIR):
-            os.makedirs(C.WEIGHTS_DIR)
+        if not os.path.exists(config.PATH_DIR_WEIGHTS):
+            os.makedirs(config.PATH_DIR_WEIGHTS)
         download_url(WEIGHTS_URL, weights_path)
         print(f"  downloaded in {time.time()-st:.2f}s")
-        
+
 
 class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    YELLOW = '\033[33m'
-    GREEN = '\033[32m'
-    ERROR = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    YELLOW = "\033[33m"
+    GREEN = "\033[32m"
+    ERROR = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"

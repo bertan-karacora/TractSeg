@@ -1,33 +1,31 @@
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import numpy as np
 
+import tractseg.config as config
 from tractseg.data.data_loader_inference import DataLoaderInference
 from tractseg.libs import peak_utils
 
 
-def get_seg_single_img_3_directions(Config, model, subject=None, data=None, scale_to_world_shape=True,
-                                    only_prediction=False, batch_size=1):
+def get_seg_single_img_3_directions(model, subject=None, data=None, scale_to_world_shape=True, only_prediction=False, batch_size=1):
     from tractseg.libs import trainer
 
     prob_slices = []
     directions = ["x", "y", "z"]
     for idx, direction in enumerate(directions):
-        Config.SLICE_DIRECTION = direction
-        print("Processing direction ({} of 3)".format(idx+1))
+        config.SLICE_DIRECTION = direction
+        print("Processing direction ({} of 3)".format(idx + 1))
 
         if subject:
-            dataManagerSingle = DataLoaderInference(Config, subject=subject)  # runtime on HCP data 0s
+            dataManagerSingle = DataLoaderInference(subject=subject)  # runtime on HCP data 0s
         else:
-            dataManagerSingle = DataLoaderInference(Config, data=data)  # runtime on HCP data 0s
+            dataManagerSingle = DataLoaderInference(data=data)  # runtime on HCP data 0s
 
-        img_probs, img_y = trainer.predict_img(Config, model, dataManagerSingle, probs=True,
-                                               scale_to_world_shape=scale_to_world_shape,
-                                               only_prediction=only_prediction,
-                                               batch_size=batch_size)    # (x, y, z, nr_classes)
+        img_probs, img_y = trainer.predict_img(
+            model, dataManagerSingle, probs=True, scale_to_world_shape=scale_to_world_shape, only_prediction=only_prediction, batch_size=batch_size
+        )  # (x, y, z, nr_classes)
         prob_slices.append(img_probs)
 
     probs_x, probs_y, probs_z = prob_slices
@@ -36,7 +34,7 @@ def get_seg_single_img_3_directions(Config, model, subject=None, data=None, scal
     probs_y = probs_y[..., None]
     probs_z = probs_z[..., None]
     # runtime on HCP data: 1.4s
-    probs_combined = np.concatenate((probs_x, probs_y, probs_z), axis=4)    # (x, y, z, nr_classes, 3)
+    probs_combined = np.concatenate((probs_x, probs_y, probs_z), axis=4)  # (x, y, z, nr_classes, 3)
     return probs_combined, img_y
 
 
@@ -79,7 +77,7 @@ def mean_fusion_peaks(img, nr_cpus=-1):
         print("idx: {}".format(idx))
         dirs_per_bundle = []
         for jdx in range(3):  # 3 orientations
-            peak = img[:, :, :, idx*3:idx*3+3, jdx]
+            peak = img[:, :, :, idx * 3 : idx * 3 + 3, jdx]
             tensor = peak_utils.peaks_to_tensors(peak)
             dirs_per_bundle.append(tensor)
         merged_tensor = np.array(dirs_per_bundle).mean(axis=0)
@@ -107,6 +105,6 @@ def majority_fusion(threshold, img, probs=None):
     probs_combined = img.astype(np.int16)
     probs_sum = probs_combined.sum(axis=4)
     probs_result = np.zeros(probs_sum.shape)
-    probs_result[probs_sum >= 2] = 1   #majority is at least 2 of 3
+    probs_result[probs_sum >= 2] = 1  # majority is at least 2 of 3
     probs_result[probs_sum < 2] = 0
     return probs_result.astype(np.int16)
