@@ -48,10 +48,5 @@ setuptools.setup(
         "bin/get_image_spacing",
         "bin/remove_negative_values",
     ],
-    package_data={
-        "tractseg.resources": [
-            "MNI_FA_template.nii.gz",
-            "random_forest_peak_orientation_detection.pkl",
-        ],
-    },
+    include_package_data=True,
 )
