@@ -1,0 +1,4 @@
+PATH_CWD: "/home/lab1/TractSeg"
+PATH_DATA: "/data/HCP"
+PATH_DIR_EXP: /home/lab1/TractSeg/out/experiments"
+PATH_DIR_WEIGHTS: "/home/lab1/TractSeg/tractseg/weights"
