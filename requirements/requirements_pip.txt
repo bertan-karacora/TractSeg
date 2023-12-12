@@ -3,9 +3,11 @@ aiosignal==1.3.1
 async-timeout==4.0.3
 attrs==23.1.0
 -e git+https://github.com/MIC-DKFZ/batchgenerators.git@38a68472283df00af08b3d764b043b87b084cba4#egg=batchgenerators
+bonndit==0.3.1
 certifi==2023.7.22
 charset-normalizer==3.3.2
 contourpy==1.1.1
+cvxopt==1.3.2
 cycler==0.12.1
 dataclasses-json==0.6.2
 Deprecated==1.2.14
@@ -71,7 +73,6 @@ tifffile==2023.7.10
 torch==2.1.0
 tqdm==4.66.1
 traceback2==1.4.0
--e git+ssh://git@github.com/bertan-karacora/TractSeg.git@efa61db310e5cb29b48fe9c9e23a9e879bfa0cf7#egg=TractSeg
 triton==2.1.0
 typing-inspect==0.9.0
 typing_extensions==4.8.0
