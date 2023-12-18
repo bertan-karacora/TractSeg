@@ -129,11 +129,10 @@ dmypy.json
 .pyre/
 
 # Explicit dependencies
-mrtrix3/
-fsl/
-batchgenerators/
+libs/
 
 # Data
+# I recommend creating symlinks to any desired dataset directories and collecting them in this data directory.
 data/
 
 # Output
