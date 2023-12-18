@@ -102,8 +102,8 @@ def train_model(model, data_loader):
                 start_time_data_preparation = time.time()
                 batch_nr[type] += 1
 
-                x = batch["data"]  # (bs, nr_of_channels, x, y)
-                y = batch["seg"]  # (bs, nr_of_classes, x, y)
+                x = batch["data"]  # (batch_size, nr_of_channels, x, y)
+                y = batch["seg"]  # (batch_size, nr_of_classes, x, y)
 
                 timings["data_preparation_time"] += time.time() - start_time_data_preparation
                 start_time_network = time.time()
