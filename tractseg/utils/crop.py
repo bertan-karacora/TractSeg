@@ -1,6 +1,7 @@
 import argparse
 import nibabel as nib
 import numpy as np
+import nrrd
 
 
 def parse_args():
@@ -44,16 +45,27 @@ def crop_to_bbox(img, bbox, spatial_channels_last=False):
 def main():
     args = parse_args()
 
-    img = nib.load(args.path_input)
-    data_img = np.nan_to_num(img.get_fdata())
+    if args.path_input.endswith(".nrrd"):
+        data_img, img_header = nrrd.read(args.path_input)
+    elif args.path_input.endswith(".nii.gz"):
+        img = nib.load(args.path_input)
+        data_img = np.nan_to_num(img.get_fdata())
+    else:
+        raise ValueError("Unsupported input file type.")
+
     img_reference = nib.load(args.path_reference)
     data_reference = np.nan_to_num(img_reference.get_fdata())
 
     bbox = bounding_box(data_reference)
     data_img = crop_to_bbox(data_img, bbox, args.spatial_channels_last)
 
-    img_output = nib.Nifti1Image(data_img, img.affine)
-    nib.save(img_output, args.path_output)
+    if args.path_input.endswith(".nrrd"):
+        nrrd.write(args.path_output, data_img, img_header)
+    elif args.path_input.endswith(".nii.gz"):
+        img_output = nib.Nifti1Image(data_img, img.affine)
+        nib.save(img_output, args.path_output)
+    else:
+        raise ValueError("Unsupported input file type.")
 
 
 if __name__ == "__main__":

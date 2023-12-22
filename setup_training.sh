@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# dir_data=/data/HCP
-# ids_subject=(599469 599671 601127 613538 620434 622236 623844 627549 638049 644044 645551 654754 665254 672756 673455 677968 679568 680957 683256 685058 687163 690152 695768 702133 704238 705341 709551 715041 715647 729254 729557 732243 734045 742549 748258 748662 749361 751348 753251 756055 759869 761957 765056 770352 771354 779370 782561 784565 786569 789373 792564 792766 802844 814649 816653 826353 826454 833148 833249 837560 837964 845458 849971 856766 857263 859671 861456 865363 871762 871964 872158 872764 877168 877269 887373 889579 894673 896778 896879 898176 899885 901038 901139 901442 904044 907656 910241 912447 917255 922854 930449 932554 951457 957974 958976 959574 965367 965771 978578 979984 983773 984472 987983 991267 992774)
+dir_data=data/HCP
+ids_subject=(599469 599671 601127 613538 620434 622236 623844 627549 638049 644044 645551 654754 665254 672756 673455 677968 679568 680957 683256 685058 687163 690152 695768 702133 704238 705341 709551 715041 715647 729254 729557 732243 734045 742549 748258 748662 749361 751348 753251 756055 759869 761957 765056 770352 771354 779370 782561 784565 786569 789373 792564 792766 802844 814649 816653 826353 826454 833148 833249 837560 837964 845458 849971 856766 857263 859671 861456 865363 871762 871964 872158 872764 877168 877269 887373 889579 894673 896778 896879 898176 899885 901038 901139 901442 904044 907656 910241 912447 917255 922854 930449 932554 951457 957974 958976 959574 965367 965771 978578 979984 983773 984472 987983 991267 992774)
 
-dir_data=data/test
-ids_subject=(599671 601127)
+# dir_data=data/test
+# ids_subject=(599671 601127)
 
 activate_python_venv() {
     python3.9 -m venv .venv
@@ -31,6 +31,7 @@ download_tracts() {
     for id_subject in ${ids_subject[@]}; do
         mv $dir_tracts/$id_subject/tracts $dir_data/$id_subject/tracts
     done
+    wait
 
     rm -rf $dir_tracts
 
@@ -47,7 +48,10 @@ binarize_tracts() {
         dir_out=$dir_subject/tracts_binarized
         mkdir -p $dir_out
 
+        num_processes=6
         for file_trk in /home/lab1/data_tmp/HCP/$id_subject/tracts/*.trk; do
+            ((i = i % num_processes))
+            ((i++ == 0)) && wait
             name_tract=$(basename ${file_trk%.*})
             echo "Binarizing $name_tract for subject $id_subject."
 
@@ -58,6 +62,7 @@ binarize_tracts() {
         done
         wait
     done
+    wait
 
     echo "Binarizing tracts finished."
 }
@@ -65,7 +70,10 @@ binarize_tracts() {
 concat() {
     echo "Concatenating tracts..."
 
+    num_processes=6
     for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
         echo "Concatenating for subject $id_subject."
 
         dir_subject=$dir_data/$id_subject
@@ -160,7 +168,10 @@ extract_fods() {
 extract_low_rank_approx() {
     echo "Extracting low-rank approximations..."
 
+    num_processes=6
     for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
         echo "Extracting low-rank approximations for subject $id_subject."
 
         dir_subject=$dir_data/$id_subject
@@ -168,11 +179,13 @@ extract_low_rank_approx() {
         mkdir -p $dir_out
 
         low-rank-k-approx \
-            -i $dir_subject/fodf.nrrd \
+            -i $dir_subject/mtdeconv/fodf.nrrd \
             -o $dir_out/fodf_approx_rank_3.nrrd \
             -r 3 &
     done
     wait
+
+    rm low-rank-k-approx.log
 
     echo "Extracting low-rank approximations finished."
 }
@@ -256,15 +269,19 @@ convert() {
 crop() {
     echo "Cropping features and tracts..."
 
+    num_processes=6
     for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
         echo "Cropping features and tracts for subject $id_subject."
 
         dir_subject=$dir_data/$id_subject
 
         python tractseg/utils/crop.py \
-            -i $dir_subject/peaks/peaks.nii.gz \
-            -o $dir_subject/peaks/peaks_cropped.nii.gz \
-            --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
+            -i $dir_subject/fodf_low_rank/fodf_approx_rank_3.nrrd \
+            -o $dir_subject/fodf_low_rank/fodf_approx_rank_3_cropped.nrrd \
+            --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz \
+            --spatial_channels_last &
 
         python tractseg/utils/crop.py \
             -i $dir_subject/bundle_masks/bundle_masks.nii.gz \
@@ -288,7 +305,7 @@ main() {
     # extract_fods
     # extract_low_rank_approx
 
-    # crop
+    crop
 }
 
 # This script assumes data from the HCP is already available.

@@ -6,7 +6,7 @@ dir_fsl=~/TractSeg/libs/fsl
 install_system_requirements() {
     sudo add-apt-repository -y ppa:deadsnakes/ppa
     sudo apt update
-    sudo apt install -y python3.9 python3.9-venv python-is-python3
+    sudo apt install -y python3.9 python3.9-venv python3.9-dev python-is-python3
     sudo apt install -y $(cat requirements/requirements_apt.txt)
 }
 
