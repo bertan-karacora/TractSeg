@@ -1,5 +1,5 @@
 # Input data
-EXPERIMENT_TYPE: "tract_segmentation" # tract_segmentation|endings_segmentation|dm_regression|peak_regression
+TYPE_EXP: "tract_segmentation" # tract_segmentation|endings_segmentation|dm_regression|peak_regression
 EXP_NAME: "custom_experiment"
 DATASET_FOLDER: "HCP_preprocessed"
 LABELS_FOLDER: "bundle_masks"
@@ -7,7 +7,7 @@ CLASSES: "All"
 NR_OF_GRADIENTS: 9
 DATASET: "HCP" # HCP|HCP_32g|Schizo
 RESOLUTION: "1.25mm" # 1.25mm|2.5mm
-FEATURES_FILENAME: "12g90g270g_CSD_BX" # 12g90g270g|270g_125mm_xyz|270g_125mm_peaks|90g_125mm_peaks|32g_25mm_peaks|32g_25mm_xyz
+FILENAME_FEATURES: "12g90g270g_CSD_BX" # 12g90g270g|270g_125mm_xyz|270g_125mm_peaks|90g_125mm_peaks|32g_25mm_peaks|32g_25mm_xyz
 LABELS_TYPE: "int"
 THRESHOLD: 0.5 # Binary: 0.5, Regression: 0.01
 

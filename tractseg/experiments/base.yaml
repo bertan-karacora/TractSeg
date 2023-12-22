@@ -1,19 +1,24 @@
+# TODO: Renaming
+TYPE_EXP: "tract_segmentation" # tract_segmentation|endings_segmentation|dm_regression|peak_regression
+
 # Input data
-EXPERIMENT_TYPE: "tract_segmentation" # tract_segmentation|endings_segmentation|dm_regression|peak_regression
-EXP_NAME: "custom_experiment"
-DATASET_FOLDER: "HCP_preprocessed"
-LABELS_FOLDER: "bundle_masks"
-CLASSES: "All"
+DATASET: "HCP105"
+PATH_DATA: "/data/HCP"
+DIR_FEATURES: "fodf_low_rank"
+FILENAME_FEATURES: "fodf_approx_rank_3_cropped.nrrd"
+DIR_LABELS: "bundle_masks"
+LABELSET: "bundles_all72"
+FILENAME_LABELS: "bundle_masks_cropped.nii.gz"
+
+# TODO: Can be inferred from headers (and experiment type)?
 NR_OF_GRADIENTS: 9
-DATASET: "HCP" # HCP|HCP_32g|Schizo
 RESOLUTION: "1.25mm" # 1.25mm|2.5mm
-FEATURES_FILENAME: "12g90g270g" # 12g90g270g|270g_125mm_xyz|270g_125mm_peaks|90g_125mm_peaks|32g_25mm_peaks|32g_25mm_xyz
 LABELS_TYPE: "int"
 THRESHOLD: 0.5 # Binary: 0.5, Regression: 0.01
 
 # Hyperparams
 MODEL: "UNet_Pytorch_DeepSup"
-DIM: "2D" # 2D|3D
+SHAPE_INPUT: [144, 144]
 BATCH_SIZE: 47
 LEARNING_RATE: 0.001
 LR_SCHEDULE: True
@@ -21,7 +26,7 @@ LR_SCHEDULE_MODE: "min" # min|max
 LR_SCHEDULE_PATIENCE: 20
 UNET_NR_FILT: 64
 EPOCH_MULTIPLIER: 1 # 2D: 1, 3D: 12 for lowRes, 3 for highRes
-NUM_EPOCHS: 250
+NUM_EPOCHS: 1
 SLICE_DIRECTION: "y" # x|y|z  ("combined" needs z)
 TRAINING_SLICE_DIRECTION: "xyz" # y|xyz
 LOSS_FUNCTION: "default" # default|soft_batch_dice
@@ -30,19 +35,12 @@ LOSS_WEIGHT: null # null: no weighting
 LOSS_WEIGHT_LEN: -1 # -1: constant over all epochs
 BATCH_NORM: False
 WEIGHT_DECAY: 0
-USE_DROPOUT: False
+USE_DROPOUT: True # slightly less overfitting (but max f1_validate maybe slightly worse (makes sense if less overfitting))
 DROPOUT_SAMPLING: False
 LOAD_WEIGHTS: False
 SAVE_WEIGHTS: True
 TYPE: "single_direction" # single_direction|combined
 CV_FOLD: 0
-VALIDATE_SUBJECTS: []
-TRAIN_SUBJECTS: []
-TEST_SUBJECTS: []
-TRAIN: True
-TEST: True
-SEGMENT: False
-GET_PROBS: False
 OUTPUT_MULTIPLE_FILES: False
 RESET_LAST_LAYER: False
 UPSAMPLE_TYPE: "bilinear" # bilinear|nearest
@@ -59,9 +57,7 @@ PRINT_FREQ: 20
 NORMALIZE_DATA: True
 NORMALIZE_PER_CHANNEL: False
 BEST_EPOCH: 0
-VERBOSE: True
 CALC_F1: True
-ONLY_VAL: False
 TEST_TIME_DAUG: False
 PAD_TO_SQUARE: True
 INPUT_RESCALING: False # Resample data to different resolution (instead of doing in preprocessing))
