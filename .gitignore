@@ -134,6 +134,7 @@ libs/
 # Data
 # I recommend creating symlinks to any desired dataset directories and collecting them in this data directory.
 data/
+!/tractseg/data/
 
 # Output
 out/
