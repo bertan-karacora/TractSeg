@@ -1,189 +1,139 @@
-#!/usr/bin/env python
-
-"""
-This module is for training the model. See Readme.md for more details about training your own model.
-
-Examples:
-    Run local:
-    $ ExpRunner --config=XXX
-
-    Predicting with new config setup:
-    $ ExpRunner --train=False --test=True --lw --config=XXX
-"""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import warnings
-import os
-import time
 import importlib_resources
-import argparse
-import pickle as pkl
-from pprint import pprint
-import distutils.util
-from os.path import join
+from pathlib import Path
+import time
 
+import argparse
 import nibabel as nib
 import numpy as np
 import torch
 
 import tractseg.config as config
-from tractseg.libs import direction_merger
-from tractseg.libs import exp_utils
-from tractseg.libs import img_utils
-from tractseg.libs import peak_utils
-from tractseg.libs import trainer
+from tractseg.data import dataset_specific_utils
 from tractseg.data.data_loader_training import DataLoaderTraining as DataLoaderTraining2D
 from tractseg.data.data_loader_training_3D import DataLoaderTraining as DataLoaderTraining3D
 from tractseg.data.data_loader_inference import DataLoaderInference
-from tractseg.data import dataset_specific_utils
+from tractseg.libs import direction_merger
+from tractseg.libs import exp_utils
+from tractseg.libs import peak_utils
+from tractseg.libs import trainer
 from tractseg.models.base_model import BaseModel
 
-warnings.simplefilter("ignore", UserWarning)  # hide scipy warnings
-warnings.simplefilter("ignore", FutureWarning)  # hide h5py warnings
-warnings.filterwarnings("ignore", message="numpy.dtype size changed")  # hide Cython benign warning
-warnings.filterwarnings("ignore", message="numpy.ufunc size changed")  # hide Cython benign warning
 
-
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(
         description="Train a network on your own data to segment white matter bundles.",
         epilog="Written by Jakob Wasserthal. Please reference 'Wasserthal et al. "
         "TractSeg - Fast and accurate white matter tract segmentation. "
         "https://doi.org/10.1016/j.neuroimage.2018.07.070)'",
     )
-    parser.add_argument("--config", metavar="name", help="Name of configuration to use")
-    parser.add_argument("--train", metavar="True/False", help="Train network", type=distutils.util.strtobool, default=True)
-    parser.add_argument("--test", metavar="True/False", help="Test network", type=distutils.util.strtobool, default=False)
+    parser.add_argument("--verbose", action="store_true", help="Show more intermediate output")
+    parser.add_argument("--config_exp", metavar="name", help="Name of experiment configuration to use")
+    parser.add_argument("--name_exp", metavar="name", help="Experiment name", default=time.strftime("%Y_%m_%d-%H_%M_%S"))
+    parser.add_argument("--lw", action="store_true", help="Load weights of pretrained net")
+    parser.add_argument("--train", action="store_true", help="Train network")
+    parser.add_argument("--test", action="store_true", help="Test network")
+    parser.add_argument("--val", action="store_true", help="Validate")
     parser.add_argument("--seg", action="store_true", help="Create binary segmentation")
     parser.add_argument("--probs", action="store_true", help="Create probmap segmentation")
-    parser.add_argument("--lw", action="store_true", help="Load weights of pretrained net")
-    parser.add_argument("--only_val", action="store_true", help="only run validation")
-    parser.add_argument("--en", metavar="name", help="Experiment name")
-    parser.add_argument("--fold", metavar="N", help="Which fold to train when doing CrossValidation", type=int)
-    parser.add_argument("--verbose", action="store_true", help="Show more intermediate output", default=True)
+    parser.add_argument("--fold", metavar="N", help="Which fold to train when doing CrossValidation", type=int, default=0)
+
     args = parser.parse_args()
+    return args
 
-    path_experiments = importlib_resources.files("tractseg.experiments")
-    config.read_config(path_experiments / "base.yaml")
-    if args.config:
-        config.read_config(path_experiments / args.config)
 
-    config.EXP_NAME = args.en or time.strftime("%Y_%m_%d-%H_%M_%S")
-
-    config.TRAIN = bool(args.train)
-    config.TEST = bool(args.test)
-    if args.seg:
-        config.SEGMENT = True
-    if args.probs:
-        config.GET_PROBS = True
-    if args.lw:
-        config.LOAD_WEIGHTS = args.lw
-    if args.fold:
-        config.CV_FOLD = args.fold
-    if args.only_val:
-        config.ONLY_VAL = True
+def add_args_to_config(args):
     config.VERBOSE = args.verbose
+    config.EXP_NAME = args.name_exp
+    config.LOAD_WEIGHTS = args.lw
+    config.TRAIN = args.train
+    config.TEST = args.test
+    config.VALIDATE = args.val
+    config.SEGMENT = args.seg
+    config.GET_PROBS = args.probs
+    config.CV_FOLD = args.fold
 
-    config.MULTI_PARENT_PATH = join(config.PATH_DIR_EXP, config.EXP_MULTI_NAME)
-    config.PATH_EXP = join(config.PATH_DIR_EXP, config.EXP_MULTI_NAME, config.EXP_NAME)
-    config.TRAIN_SUBJECTS, config.VALIDATE_SUBJECTS, config.TEST_SUBJECTS = dataset_specific_utils.get_cv_fold(config.CV_FOLD, dataset=config.DATASET)
 
-    if config.PATH_WEIGHTS == "":
-        config.PATH_WEIGHTS = exp_utils.get_best_weights_path(config.PATH_EXP, config.LOAD_WEIGHTS)
+def read_config_exp(filename_config=None):
+    path_dir_configs_exp = importlib_resources.files("tractseg.experiments")
+    config.set_config_exp(path_dir_configs_exp / "base.yaml")
 
-    # Autoset input dimensions based on settings
-    config.INPUT_DIM = dataset_specific_utils.get_correct_input_dim()
-    dataset_specific_utils.set_labels_filename()
+    if filename_config is not None:
+        config.set_config_exp(path_dir_configs_exp / "custom" / filename_config)
 
-    if config.EXPERIMENT_TYPE == "peak_regression":
-        config.NR_OF_CLASSES = 3 * len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
-    else:
-        config.NR_OF_CLASSES = len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
 
-    if config.TRAIN and not config.ONLY_VAL:
-        config.PATH_EXP = exp_utils.create_experiment_folder(config.EXP_NAME, config.MULTI_PARENT_PATH, config.TRAIN)
+def main():
+    args = parse_args()
+    read_config_exp(args.config_exp)
+    add_args_to_config(args)
 
-    if config.DIM != "2D":
-        config.EPOCH_MULTIPLIER = 3
+    config.PATH_EXP = exp_utils.create_dir_exp(config.EXP_NAME)
+    # config.PATH_WEIGHTS = exp_utils.get_best_weights_path() if config.LOAD_WEIGHTS else None
 
-    if config.VERBOSE:
-        print("Hyperparameters:")
-        config.dump()
+    config.SUBJECTS = dataset_specific_utils.get_subjects(config.DATASET)
+    config.SUBJECTS_TRAIN, config.SUBJECTS_VALIDATE, config.SUBJECTS_TEST = dataset_specific_utils.get_cv_fold(config.CV_FOLD)
 
-    with open(join(config.PATH_EXP, "config_exp.yaml"), "w") as f:
-        config_dict = {attr: getattr(config, attr) for attr in dir(config) if not callable(getattr(config, attr)) and not attr.startswith("__")}
-        pprint(config_dict, f)
+    config.LABELS = dataset_specific_utils.get_labels(config.LABELSET)
+    config.NR_OF_CLASSES = len(config.LABELS[1:]) if config.TYPE_EXP != "peak_regression" else 3 * len(config.LABELS[1:])
+
+    print("Config:")
+    config.dump()
+    config.save(Path(config.PATH_EXP))
 
     model = BaseModel()
-    if config.DIM == "2D":
-        data_loader = DataLoaderTraining2D()
-    else:
-        data_loader = DataLoaderTraining3D()
+    data_loader = DataLoaderTraining2D() if len(config.SHAPE_INPUT) == 2 else DataLoaderTraining3D()
 
     if config.TRAIN:
         print("Training...")
         trainer.train_model(model, data_loader)
 
-    # After Training
-    if config.TRAIN and not config.ONLY_VAL:
-        # Have to load other weights, because after training it has the weights of the last epoch
-        print("Loading best epoch: {}".format(config.BEST_EPOCH))
-        config.PATH_WEIGHTS = config.PATH_EXP + "/best_weights_ep" + str(config.BEST_EPOCH) + ".npz"
-        config.LOAD_WEIGHTS = True
+        # After training
+        print(f"Loading best epoch: {config.BEST_EPOCH}")
+        config.PATH_WEIGHTS = exp_utils.get_best_weights_path()
         model.load_model(config.PATH_WEIGHTS)
         model_test = model
     else:
         # Weight_path already set to best model (when reading program parameters) -> will be loaded automatically
         model_test = model
 
-    if config.SEGMENT:
-        exp_utils.make_dir(join(config.PATH_EXP, "segmentations"))
-        all_subjects = config.VALIDATE_SUBJECTS
-        for subject in all_subjects:
-            print("Get_segmentation subject {}".format(subject))
+    # if config.SEGMENT:
+    #     exp_utils.make_dir(join(config.PATH_EXP, "segmentations"))
+    #     all_subjects = config.VALIDATE_SUBJECTS
+    #     for subject in all_subjects:
+    #         print("Get_segmentation subject {}".format(subject))
 
-            if config.EXPERIMENT_TYPE == "peak_regression":
-                data_loader = DataLoaderInference(subject=subject)
-                img_probs, img_y = trainer.predict_img(model_test, data_loader, probs=True)  # only x or y or z
-                img_seg = peak_utils.peak_image_to_binary_mask(img_probs, len_thr=0.4)  # thr: 0.4 slightly better than 0.2
-            else:
-                # returns probs not binary seg
-                img_seg, img_y = direction_merger.get_seg_single_img_3_directions(model, subject)
-                img_seg = direction_merger.mean_fusion(config.THRESHOLD, img_seg, probs=False)
+    #         if config.TYPE_EXP == "peak_regression":
+    #             data_loader = DataLoaderInference(subject=subject)
+    #             img_probs, img_y = trainer.predict_img(model_test, data_loader, probs=True)  # only x or y or z
+    #             img_seg = peak_utils.peak_image_to_binary_mask(img_probs, len_thr=0.4)  # thr: 0.4 slightly better than 0.2
+    #         else:
+    #             # returns probs not binary seg
+    #             img_seg, img_y = direction_merger.get_seg_single_img_3_directions(model, subject)
+    #             img_seg = direction_merger.mean_fusion(config.THRESHOLD, img_seg, probs=False)
 
-            img = nib.Nifti1Image(img_seg.astype(np.uint8), dataset_specific_utils.get_dwi_affine(config.DATASET, config.RESOLUTION))
-            nib.save(img, join(config.PATH_EXP, "segmentations", subject + "_segmentation.nii.gz"))
+    #         affine = nib.load(Path(config.PATH_DATA) / config.SUBJECTS[0] / config.DIR_LABELS / config.FILENAME_LABELS).affine
+    #         img = nib.Nifti1Image(img_seg.astype(np.uint8), affine)
+    #         nib.save(img, join(config.PATH_EXP, "segmentations", subject + "_segmentation.nii.gz"))
 
     if config.TEST:
-        trainer.test_whole_subject(model_test, config.VALIDATE_SUBJECTS, "validate")
+        trainer.test_whole_subject(model_test, config.SUBJECTS_VALIDATE, "validate")
 
-    if config.GET_PROBS:
-        exp_utils.make_dir(join(config.PATH_EXP, "probmaps"))
-        all_subjects = config.VALIDATE_SUBJECTS
-        for subject in all_subjects:
-            print("Get_probs subject {}".format(subject))
-            data_loader = DataLoaderInference(subject=subject)
+    # if config.GET_PROBS:
+    #     exp_utils.make_dir(join(config.PATH_EXP, "probmaps"))
+    #     all_subjects = config.VALIDATE_SUBJECTS
+    #     for subject in all_subjects:
+    #         print("Get_probs subject {}".format(subject))
+    #         data_loader = DataLoaderInference(subject=subject)
 
-            if config.EXPERIMENT_TYPE == "peak_regression":
-                img_probs, img_y = trainer.predict_img(model_test, data_loader, probs=True)
-                img_probs = peak_utils.remove_small_peaks(img_probs, len_thr=0.4)
-            else:
-                img_probs, img_y = direction_merger.get_seg_single_img_3_directions(model, subject=subject)
-                img_probs = direction_merger.mean_fusion(config.THRESHOLD, img_probs, probs=True)
+    #         if config.TYPE_EXP == "peak_regression":
+    #             img_probs, img_y = trainer.predict_img(model_test, data_loader, probs=True)
+    #             img_probs = peak_utils.remove_small_peaks(img_probs, len_thr=0.4)
+    #         else:
+    #             img_probs, img_y = direction_merger.get_seg_single_img_3_directions(model, subject=subject)
+    #             img_probs = direction_merger.mean_fusion(config.THRESHOLD, img_probs, probs=True)
 
-            img = nib.Nifti1Image(img_probs, dataset_specific_utils.get_dwi_affine(config.DATASET, config.RESOLUTION))
-            nib.save(img, join(config.PATH_EXP, "probmaps", subject + "_peak.nii.gz"))
-
-    eval_script_path = join(os.path.expanduser("~"), "dev/bsp/eval_nonHCP.py")
-    if os.path.exists(eval_script_path) and not config.ONLY_VAL and not config.TEST:
-        print("Evaluating on non HCP data...")
-        # Free GPU memory  (2.5GB remaining otherwise)
-        del model, model_test
-        torch.cuda.empty_cache()
-        os.system("python " + eval_script_path + " " + config.EXP_NAME)
+    #         affine = nib.load(Path(config.PATH_DATA) / config.SUBJECTS[0] / config.DIR_LABELS / config.FILENAME_LABELS).affine
+    #         img = nib.Nifti1Image(img_probs, dataset_specific_utils.get_dwi_affine(config.DATASET, config.RESOLUTION))
+    #         nib.save(img, join(config.PATH_EXP, "probmaps", subject + "_peak.nii.gz"))
 
 
 if __name__ == "__main__":

@@ -1,27 +1,22 @@
-import glob
+from pathlib import Path
 import os
 import re
-import ast
 import sys
 from os.path import join
-from pprint import pprint
 
 import numpy as np
 
 import tractseg.config as config
 
 
-def create_experiment_folder(experiment_name, multi_parent_path, train):
+def create_dir_exp(name_exp):
     """
     Create a new experiment folder. If it already exists, create new one with increasing number at the end.
     If not training model (only predicting): Use existing folder
     """
-    if multi_parent_path != "":
-        dir = join(multi_parent_path, experiment_name)
-    else:
-        dir = join(config.PATH_DIR_EXP, experiment_name)
+    dir = join(config.PATH_DIR_EXP, name_exp)
 
-    if not train:
+    if not config.TRAIN:
         if os.path.exists(dir):
             return dir
         else:
@@ -29,20 +24,16 @@ def create_experiment_folder(experiment_name, multi_parent_path, train):
     else:
         for i in range(40):
             if os.path.exists(dir):
-                tailing_numbers = re.findall("x([0-9]+)$", experiment_name)  # find tailing numbers that start with a x
+                tailing_numbers = re.findall("x([0-9]+)$", name_exp)  # find tailing numbers that start with a x
                 if len(tailing_numbers) > 0:
                     num = int(tailing_numbers[0])
                     if num < 10:
-                        experiment_name = experiment_name[:-1] + str(num + 1)
+                        name_exp = name_exp[:-1] + str(num + 1)
                     else:
-                        experiment_name = experiment_name[:-2] + str(num + 1)
+                        name_exp = name_exp[:-2] + str(num + 1)
                 else:
-                    experiment_name += "_x2"
-
-                if multi_parent_path != "":
-                    dir = join(multi_parent_path, experiment_name)
-                else:
-                    dir = join(config.PATH_DIR_EXP, experiment_name)
+                    name_exp += "_x2"
+                dir = join(config.PATH_DIR_EXP, name_exp)
             else:
                 os.makedirs(dir)
                 break
@@ -54,11 +45,9 @@ def make_dir(directory):
         os.makedirs(directory)
 
 
-def get_best_weights_path(exp_path, load_weights):
-    if load_weights:
-        return glob.glob(exp_path + "/best_weights_ep*.npz")[0]
-    else:
-        return ""
+def get_best_weights_path():
+    path = Path(config.PATH_EXP).glob("weights_best_ep*.npz")[0]
+    return path
 
 
 def get_bvals_bvecs_path(args):
