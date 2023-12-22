@@ -1,4 +1,5 @@
 import importlib_resources
+
 import pprint
 import yaml
 
@@ -65,9 +66,9 @@ def dump():
     pprint.pprint(d)
 
 
-def save():
+def save(path):
     d = {k: v for k, v in globals().items() if k.isupper()}
-    with open(f"{PATH_CONFIG_EXP}.save", "w") as file:
+    with open(path / "config_exp.yaml", "w+") as file:
         yaml.dump(d, file, default_flow_style=False)
 
 

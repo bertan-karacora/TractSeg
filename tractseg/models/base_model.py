@@ -48,14 +48,14 @@ class BaseModel:
             self.criterion = pytorch_utils.soft_sample_dice
         elif config.LOSS_FUNCTION == "soft_batch_dice":
             self.criterion = pytorch_utils.soft_batch_dice
-        elif config.EXPERIMENT_TYPE == "peak_regression":
+        elif config.TYPE_EXP == "peak_regression":
             if config.LOSS_FUNCTION == "angle_length_loss":
                 self.criterion = pytorch_utils.angle_length_loss
             elif config.LOSS_FUNCTION == "angle_loss":
                 self.criterion = pytorch_utils.angle_loss
             elif config.LOSS_FUNCTION == "l2_loss":
                 self.criterion = pytorch_utils.l2_loss
-        elif config.EXPERIMENT_TYPE == "dm_regression":
+        elif config.TYPE_EXP == "dm_regression":
             # self.criterion = nn.MSELoss()   # aggregate by mean
             self.criterion = nn.MSELoss(size_average=False, reduce=True)  # aggregate by sum
         else:
@@ -125,7 +125,7 @@ class BaseModel:
             bundle_mask = y > 0
             weights[bundle_mask.data] *= weight_factor  # 10
 
-            if config.EXPERIMENT_TYPE == "peak_regression":
+            if config.TYPE_EXP == "peak_regression":
                 loss, angle_err = self.criterion(outputs, y, weights)
             else:
                 loss = nn.BCEWithLogitsLoss(weight=weights)(outputs, y)
@@ -143,7 +143,7 @@ class BaseModel:
             loss.backward()
         self.optimizer.step()
 
-        if config.EXPERIMENT_TYPE == "peak_regression":
+        if config.TYPE_EXP == "peak_regression":
             f1 = metric_utils.calc_peak_length_dice_pytorch(
                 config.CLASSES,
                 outputs.detach(),
@@ -151,7 +151,7 @@ class BaseModel:
                 max_angle_error=config.PEAK_DICE_THR,
                 max_length_error=config.PEAK_DICE_LEN_THR,
             )
-        elif config.EXPERIMENT_TYPE == "dm_regression":
+        elif config.TYPE_EXP == "dm_regression":
             f1 = pytorch_utils.f1_score_macro(y.detach() > config.THRESHOLD, outputs.detach(), per_class=True, threshold=config.THRESHOLD)
         else:
             f1 = pytorch_utils.f1_score_macro(y.detach(), F.sigmoid(outputs).detach(), per_class=True, threshold=config.THRESHOLD)
@@ -187,7 +187,7 @@ class BaseModel:
                 weights = torch.ones((config.BATCH_SIZE, config.NR_OF_CLASSES, y.shape[2], y.shape[3], y.shape[4])).cuda()
             bundle_mask = y > 0
             weights[bundle_mask.data] *= weight_factor
-            if config.EXPERIMENT_TYPE == "peak_regression":
+            if config.TYPE_EXP == "peak_regression":
                 loss, angle_err = self.criterion(outputs, y, weights)
             else:
                 loss = nn.BCEWithLogitsLoss(weight=weights)(outputs, y)
@@ -198,7 +198,7 @@ class BaseModel:
             else:
                 loss = self.criterion(outputs, y)
 
-        if config.EXPERIMENT_TYPE == "peak_regression":
+        if config.TYPE_EXP == "peak_regression":
             f1 = metric_utils.calc_peak_length_dice_pytorch(
                 config.CLASSES,
                 outputs.detach(),
@@ -206,7 +206,7 @@ class BaseModel:
                 max_angle_error=config.PEAK_DICE_THR,
                 max_length_error=config.PEAK_DICE_LEN_THR,
             )
-        elif config.EXPERIMENT_TYPE == "dm_regression":
+        elif config.TYPE_EXP == "dm_regression":
             f1 = pytorch_utils.f1_score_macro(y.detach() > config.THRESHOLD, outputs.detach(), per_class=True, threshold=config.THRESHOLD)
         else:
             f1 = pytorch_utils.f1_score_macro(y.detach(), F.sigmoid(outputs).detach(), per_class=True, threshold=config.THRESHOLD)
@@ -232,12 +232,12 @@ class BaseModel:
         else:
             self.net.train(False)
         outputs = self.net(X)  # forward
-        if config.EXPERIMENT_TYPE == "peak_regression" or config.EXPERIMENT_TYPE == "dm_regression":
+        if config.TYPE_EXP == "peak_regression" or config.TYPE_EXP == "dm_regression":
             probs = outputs.detach().cpu().numpy()
         else:
             probs = F.sigmoid(outputs).detach().cpu().numpy()
 
-        if config.DIM == "2D":
+        if len(config.SHAPE_INPUT) == 2:
             probs = probs.transpose(0, 2, 3, 1)  # (bs, x, y, classes)
         else:
             probs = probs.transpose(0, 2, 3, 4, 1)  # (bs, x, y, z, classes)

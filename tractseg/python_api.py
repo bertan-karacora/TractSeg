@@ -112,38 +112,38 @@ def run_tractseg(
     config.DROPOUT_SAMPLING = dropout_sampling
     config.THRESHOLD = threshold
     config.NR_CPUS = nr_cpus
-    config.INPUT_DIM = dataset_specific_utils.get_correct_input_dim()
+    config.SHAPE_INPUT = dataset_specific_utils.get_correct_input_dim()
     config.RESET_LAST_LAYER = False
 
-    if config.EXPERIMENT_TYPE == "tract_segmentation" and bundle_specific_postprocessing:
+    if config.TYPE_EXP == "tract_segmentation" and bundle_specific_postprocessing:
         config.GET_PROBS = True
 
-    if manual_exp_name is not None and config.EXPERIMENT_TYPE != "peak_regression":
-        config.PATH_WEIGHTS = exp_utils.get_best_weights_path(join(config.EXP_PATH, manual_exp_name), True)
+    if manual_exp_name is not None and config.TYPE_EXP != "peak_regression":
+        config.PATH_WEIGHTS = exp_utils.get_best_weights_path(join(config.EXP_PATH, manual_exp_name))
     else:
         if tract_definition == "TractQuerier+":
             if input_type == "peaks":
-                if config.EXPERIMENT_TYPE == "tract_segmentation" and config.DROPOUT_SAMPLING:
+                if config.TYPE_EXP == "tract_segmentation" and config.DROPOUT_SAMPLING:
                     config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, "pretrained_weights_tract_segmentation_v3.npz")
-                elif config.EXPERIMENT_TYPE == "tract_segmentation":
+                elif config.TYPE_EXP == "tract_segmentation":
                     config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, "pretrained_weights_tract_segmentation_v3.npz")
-                elif config.EXPERIMENT_TYPE == "endings_segmentation":
+                elif config.TYPE_EXP == "endings_segmentation":
                     config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, "pretrained_weights_endings_segmentation_v4.npz")
-                elif config.EXPERIMENT_TYPE == "dm_regression":
+                elif config.TYPE_EXP == "dm_regression":
                     config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, "pretrained_weights_dm_regression_v2.npz")
             else:  # T1
-                if config.EXPERIMENT_TYPE == "tract_segmentation":
+                if config.TYPE_EXP == "tract_segmentation":
                     config.PATH_WEIGHTS = join(
                         config.NETWORK_DRIVE, "hcp_exp_nodes/x_Pretrained_TractSeg_Models", "TractSeg_T1_125mm_DAugAll", "best_weights_ep142.npz"
                     )
-                elif config.EXPERIMENT_TYPE == "endings_segmentation":
+                elif config.TYPE_EXP == "endings_segmentation":
                     config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, "pretrained_weights_endings_segmentation_v1.npz")
-                elif config.EXPERIMENT_TYPE == "peak_regression":
+                elif config.TYPE_EXP == "peak_regression":
                     config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, "pretrained_weights_peak_regression_v1.npz")
         else:  # xtract
-            if config.EXPERIMENT_TYPE == "tract_segmentation":
+            if config.TYPE_EXP == "tract_segmentation":
                 config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, "pretrained_weights_tract_segmentation_xtract_v1.npz")
-            elif config.EXPERIMENT_TYPE == "dm_regression":
+            elif config.TYPE_EXP == "dm_regression":
                 config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, "pretrained_weights_dm_regression_xtract_v1.npz")
             else:
                 raise ValueError("bundle_definition xtract not supported in combination with this output type")
@@ -157,22 +157,18 @@ def run_tractseg(
     # runtime on HCP data: 0.9s
     data, seg_None, bbox, original_shape = data_utils.crop_to_nonzero(data)
     # runtime on HCP data: 0.5s
-    data, transformation = data_utils.pad_and_scale_img_to_square_img(data, target_size=config.INPUT_DIM[0], nr_cpus=nr_cpus)
+    data, transformation = data_utils.pad_and_scale_img_to_square_img(data, target_size=config.SHAPE_INPUT[0], nr_cpus=nr_cpus)
 
-    if (
-        config.EXPERIMENT_TYPE == "tract_segmentation"
-        or config.EXPERIMENT_TYPE == "endings_segmentation"
-        or config.EXPERIMENT_TYPE == "dm_regression"
-    ):
+    if config.TYPE_EXP == "tract_segmentation" or config.TYPE_EXP == "endings_segmentation" or config.TYPE_EXP == "dm_regression":
         print("Loading weights from: {}".format(config.PATH_WEIGHTS))
         config.NR_OF_CLASSES = len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
         utils.download_pretrained_weights(
-            experiment_type=config.EXPERIMENT_TYPE, dropout_sampling=config.DROPOUT_SAMPLING, tract_definition=tract_definition
+            experiment_type=config.TYPE_EXP, dropout_sampling=config.DROPOUT_SAMPLING, tract_definition=tract_definition
         )
         model = BaseModel(inference=True)
         if single_orientation:  # mainly needed for testing because of less RAM requirements
             data_loder_inference = DataLoaderInference(data=data)
-            if config.DROPOUT_SAMPLING or config.EXPERIMENT_TYPE == "dm_regression" or config.GET_PROBS:
+            if config.DROPOUT_SAMPLING or config.TYPE_EXP == "dm_regression" or config.GET_PROBS:
                 seg, _ = trainer.predict_img(
                     model,
                     data_loder_inference,
@@ -195,12 +191,12 @@ def run_tractseg(
             seg_xyz, _ = direction_merger.get_seg_single_img_3_directions(
                 model, data=data, scale_to_world_shape=False, only_prediction=True, batch_size=inference_batch_size
             )
-            if config.DROPOUT_SAMPLING or config.EXPERIMENT_TYPE == "dm_regression" or config.GET_PROBS:
+            if config.DROPOUT_SAMPLING or config.TYPE_EXP == "dm_regression" or config.GET_PROBS:
                 seg = direction_merger.mean_fusion(config.THRESHOLD, seg_xyz, probs=True)
             else:
                 seg = direction_merger.mean_fusion(config.THRESHOLD, seg_xyz, probs=False)
 
-    elif config.EXPERIMENT_TYPE == "peak_regression":
+    elif config.TYPE_EXP == "peak_regression":
         weights = {
             "Part1": "pretrained_weights_peak_regression_part1_v2.npz",
             "Part2": "pretrained_weights_peak_regression_part2_v2.npz",
@@ -218,14 +214,14 @@ def run_tractseg(
         for idx, part in enumerate(parts):
             if manual_exp_name is not None:
                 manual_exp_name_peaks = exp_utils.get_manual_exp_name_peaks(manual_exp_name, part)
-                config.PATH_WEIGHTS = exp_utils.get_best_weights_path(join(config.EXP_PATH, manual_exp_name_peaks), True)
+                config.PATH_WEIGHTS = exp_utils.get_best_weights_path(join(config.EXP_PATH, manual_exp_name_peaks))
             else:
                 config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, weights[part])
             print("Loading weights from: {}".format(config.PATH_WEIGHTS))
             config.CLASSES = "All_" + part
             config.NR_OF_CLASSES = 3 * len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
             utils.download_pretrained_weights(
-                experiment_type=config.EXPERIMENT_TYPE, dropout_sampling=config.DROPOUT_SAMPLING, part=part, tract_definition=tract_definition
+                experiment_type=config.TYPE_EXP, dropout_sampling=config.DROPOUT_SAMPLING, part=part, tract_definition=tract_definition
             )
             model = BaseModel(inference=True)
 
@@ -249,7 +245,7 @@ def run_tractseg(
             config.NR_OF_CLASSES = 3 * len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
             seg = seg_all
 
-    if config.EXPERIMENT_TYPE == "tract_segmentation" and bundle_specific_postprocessing and not dropout_sampling:
+    if config.TYPE_EXP == "tract_segmentation" and bundle_specific_postprocessing and not dropout_sampling:
         # Runtime ~4s
         seg = img_utils.bundle_specific_postprocessing(seg, dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
 
@@ -258,12 +254,12 @@ def run_tractseg(
     # runtime on HCP data: 1.6s
     seg = data_utils.add_original_zero_padding_again(seg, bbox, original_shape, config.NR_OF_CLASSES)
 
-    if config.EXPERIMENT_TYPE == "peak_regression":
+    if config.TYPE_EXP == "peak_regression":
         seg = peak_utils.mask_and_normalize_peaks(
             seg, tract_segmentations_path, dataset_specific_utils.get_bundle_names(config.CLASSES)[1:], TOM_dilation, nr_cpus=nr_cpus
         )
 
-    if config.EXPERIMENT_TYPE == "tract_segmentation" and postprocess and not dropout_sampling:
+    if config.TYPE_EXP == "tract_segmentation" and postprocess and not dropout_sampling:
         # Runtime ~7s for 1.25mm resolution
         # Runtime ~1.5s for  2mm resolution
         st = time.time()

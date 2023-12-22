@@ -37,9 +37,9 @@ def _get_weights_for_this_epoch(epoch_nr):
     return weight_factor
 
 
-def _update_metrics(calc_f1, experiment_type, metric_types, metrics, metr_batch, type):
+def _update_metrics(calc_f1, TYPE_EXP, metric_types, metrics, metr_batch, type):
     if calc_f1:
-        if experiment_type == "peak_regression":
+        if TYPE_EXP == "peak_regression":
             peak_f1_mean = np.array([s.to("cpu") for s in list(metr_batch["f1_macro"].values())]).mean()
             metr_batch["f1_macro"] = peak_f1_mean
 
@@ -72,8 +72,8 @@ def train_model(model, data_loader):
         for metric in config.METRIC_TYPES:
             metrics[metric + "_" + type] = [0]
 
-    batch_gen_train = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="train", subjects=config.TRAIN_SUBJECTS)
-    batch_gen_val = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="validate", subjects=config.VALIDATE_SUBJECTS)
+    batch_gen_train = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="train", subjects=config.SUBJECTS_TRAIN)
+    batch_gen_val = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="validate", subjects=config.SUBJECTS_VALIDATE)
 
     for epoch_nr in range(config.NUM_EPOCHS):
         start_time = time.time()
@@ -81,15 +81,19 @@ def train_model(model, data_loader):
         timings = defaultdict(lambda: 0)
         batch_nr = defaultdict(lambda: 0)
         weight_factor = _get_weights_for_this_epoch(epoch_nr)
-        types = ["validate"] if config.ONLY_VAL else ["train", "validate"]
+        types = []
+        if config.TRAIN:
+            types += ["train"]
+        if config.VALIDATE:
+            types += ["validate"]
 
         for type in types:
             print_loss = []
 
-            if config.DIM == "2D":
-                nr_of_samples = len(getattr(config, type.upper() + "_SUBJECTS")) * config.INPUT_DIM[0]
+            if len(config.SHAPE_INPUT) == 2:
+                nr_of_samples = len(getattr(config, f"SUBJECTS_{type.upper()}")) * config.SHAPE_INPUT[0]
             else:
-                nr_of_samples = len(getattr(config, type.upper() + "_SUBJECTS"))
+                nr_of_samples = len(getattr(config, f"SUBJECTS_{type.upper()}"))
 
             # *config.EPOCH_MULTIPLIER needed to have roughly same number of updates/batches as with 2D U-Net
             nr_batches = int(int(nr_of_samples / config.BATCH_SIZE) * config.EPOCH_MULTIPLIER)
@@ -117,7 +121,7 @@ def train_model(model, data_loader):
                 timings["network_time"] += time.time() - start_time_network
 
                 start_time_metrics = time.time()
-                metrics = _update_metrics(config.CALC_F1, config.EXPERIMENT_TYPE, config.METRIC_TYPES, metrics, metr_batch, type)
+                metrics = _update_metrics(config.CALC_F1, config.TYPE_EXP, config.METRIC_TYPES, metrics, metr_batch, type)
                 timings["metrics_time"] += time.time() - start_time_metrics
 
                 print_loss.append(metr_batch["loss"])
@@ -142,7 +146,7 @@ def train_model(model, data_loader):
 
         ################################### Post Training tasks (each epoch) ###################################
 
-        if config.ONLY_VAL:
+        if config.VALIDATE:
             metrics = metric_utils.normalize_last_element(metrics, batch_nr["validate"], type="validate")
             print("f1 macro validate: {}".format(round(metrics["f1_macro_validate"][0], 4)))
             return model
@@ -236,7 +240,7 @@ def predict_img(model, data_loader, probs=False, scale_to_world_shape=True, only
     def _finalize_data(layers):
         layers = np.array(layers)
 
-        if config.DIM == "2D":
+        if len(config.SHAPE_INPUT) == 2:
             # Get in right order (x,y,z) and
             if config.SLICE_DIRECTION == "x":
                 layers = layers.transpose(0, 1, 2, 3)
@@ -253,7 +257,7 @@ def predict_img(model, data_loader, probs=False, scale_to_world_shape=True, only
         assert layers.dtype == np.float32
         return layers
 
-    img_shape = [config.INPUT_DIM[0], config.INPUT_DIM[0], config.INPUT_DIM[0], config.NR_OF_CLASSES]
+    img_shape = [config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.NR_OF_CLASSES]
     layers_seg = np.empty(img_shape).astype(np.float32)
     layers_y = None if only_prediction else np.empty(img_shape).astype(np.float32)
 
@@ -293,7 +297,7 @@ def predict_img(model, data_loader, probs=False, scale_to_world_shape=True, only
 
         if not only_prediction:
             y = y.astype(exp_utils.get_correct_labels_type())
-            if config.DIM == "2D":
+            if len(config.SHAPE_INPUT) == 2:
                 y = y.transpose(0, 2, 3, 1)  # (bs, x, y, nr_classes)
             else:
                 y = y.transpose(0, 2, 3, 4, 1)
@@ -320,7 +324,7 @@ def predict_img(model, data_loader, probs=False, scale_to_world_shape=True, only
             seg[seg < config.THRESHOLD] = 0
             seg = seg.astype(np.uint8)
 
-        if config.DIM == "2D":
+        if len(config.SHAPE_INPUT) == 2:
             layers_seg[idx * batch_size : (idx + 1) * batch_size, :, :, :] = seg
             if not only_prediction:
                 layers_y[idx * batch_size : (idx + 1) * batch_size, :, :, :] = y
@@ -356,7 +360,7 @@ def test_whole_subject(model, subjects, type):
 
         print("Took {}s".format(round(time.time() - start_time, 2)))
 
-        if config.EXPERIMENT_TYPE == "peak_regression":
+        if config.TYPE_EXP == "peak_regression":
             f1 = metric_utils.calc_peak_length_dice(
                 config.CLASSES, img_probs, img_y, max_angle_error=config.PEAK_DICE_THR, max_length_error=config.PEAK_DICE_LEN_THR
             )

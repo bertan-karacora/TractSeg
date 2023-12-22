@@ -232,7 +232,7 @@ def main():
     if args.tract_segmentations_path is not None:
         tract_segmentations_path = args.tract_segmentations_path
     else:
-        if config.EXPERIMENT_TYPE != "tract_segmentation" and args.preprocess:
+        if config.TYPE_EXP != "tract_segmentation" and args.preprocess:
             tract_segmentations_path = join(config.PREDICT_IMG_OUTPUT, "bundle_segmentations_MNI")
         else:
             tract_segmentations_path = join(config.PREDICT_IMG_OUTPUT, "bundle_segmentations")
@@ -249,7 +249,7 @@ def main():
             brain_mask = preprocessing.create_brain_mask(input_path, config.PREDICT_IMG_OUTPUT)
 
         if args.preprocess:
-            if config.EXPERIMENT_TYPE == "tract_segmentation" or config.EXPERIMENT_TYPE == "dm_regression":
+            if config.TYPE_EXP == "tract_segmentation" or config.TYPE_EXP == "dm_regression":
                 input_path, bvals, bvecs, brain_mask = preprocessing.move_to_MNI_space(
                     input_path, bvals, bvecs, brain_mask, config.PREDICT_IMG_OUTPUT
                 )
@@ -328,12 +328,12 @@ def main():
     # data = np.concatenate((data, t1_data), axis=3)
 
     output_float = False
-    if config.EXPERIMENT_TYPE == "dm_regression" or config.EXPERIMENT_TYPE == "peak_regression" or dropout_sampling or args.get_probabilities:
+    if config.TYPE_EXP == "dm_regression" or config.TYPE_EXP == "peak_regression" or dropout_sampling or args.get_probabilities:
         output_float = True
 
     ####################################### Process #######################################
 
-    if config.EXPERIMENT_TYPE == "peak_regression":
+    if config.TYPE_EXP == "peak_regression":
         parts = ["Part1", "Part2", "Part3", "Part4"]
         if manual_exp_name is not None and "PeaksPart1" in manual_exp_name:
             print("INFO: Only using Part1")
@@ -379,10 +379,10 @@ def main():
         if args.preview and config.CLASSES not in ["All_Part2", "All_Part3", "All_Part4"]:
             print("Saving preview...")
             plot_utils.plot_tracts_matplotlib(
-                config.CLASSES, seg, data, config.PREDICT_IMG_OUTPUT, threshold=config.THRESHOLD, exp_type=config.EXPERIMENT_TYPE
+                config.CLASSES, seg, data, config.PREDICT_IMG_OUTPUT, threshold=config.THRESHOLD, exp_type=config.TYPE_EXP
             )
 
-        if config.EXPERIMENT_TYPE == "dm_regression":
+        if config.TYPE_EXP == "dm_regression":
             seg[seg < config.THRESHOLD] = 0
             if args.rescale_dm:
                 seg = img_utils.scale_to_range(seg, range(0, 100))
@@ -390,58 +390,56 @@ def main():
         if config.SINGLE_OUTPUT_FILE:
             img = nib.Nifti1Image(seg, data_affine)
             del seg
-            if config.EXPERIMENT_TYPE == "tract_segmentation" and dropout_sampling:
+            if config.TYPE_EXP == "tract_segmentation" and dropout_sampling:
                 output_subdir = "bundle_uncertainties"
                 nib.save(img, join(config.PREDICT_IMG_OUTPUT, output_subdir + ".nii.gz"))
-            elif config.EXPERIMENT_TYPE == "tract_segmentation":
+            elif config.TYPE_EXP == "tract_segmentation":
                 output_subdir = "bundle_segmentations"
                 nib.save(img, join(config.PREDICT_IMG_OUTPUT, output_subdir + ".nii.gz"))
-            elif config.EXPERIMENT_TYPE == "endings_segmentation":
+            elif config.TYPE_EXP == "endings_segmentation":
                 output_subdir = "bundle_endings"
                 nib.save(img, join(config.PREDICT_IMG_OUTPUT, output_subdir + ".nii.gz"))
-            elif config.EXPERIMENT_TYPE == "peak_regression":
+            elif config.TYPE_EXP == "peak_regression":
                 output_subdir = "bundle_TOMs"
                 nib.save(img, join(config.PREDICT_IMG_OUTPUT, output_subdir + ".nii.gz"))
-            elif config.EXPERIMENT_TYPE == "dm_regression":
+            elif config.TYPE_EXP == "dm_regression":
                 output_subdir = "bundle_density_maps"
                 nib.save(img, join(config.PREDICT_IMG_OUTPUT, output_subdir + ".nii.gz"))
             del img  # Free memory (before we run tracking)
         else:
-            if config.EXPERIMENT_TYPE == "tract_segmentation" and dropout_sampling:
+            if config.TYPE_EXP == "tract_segmentation" and dropout_sampling:
                 output_subdir = "bundle_uncertainties"
                 img_utils.save_multilabel_img_as_multiple_files(config.CLASSES, seg, data_affine, config.PREDICT_IMG_OUTPUT, name=output_subdir)
-            elif config.EXPERIMENT_TYPE == "tract_segmentation":
+            elif config.TYPE_EXP == "tract_segmentation":
                 output_subdir = args.tract_segmentation_output_dir
                 img_utils.save_multilabel_img_as_multiple_files(config.CLASSES, seg, data_affine, config.PREDICT_IMG_OUTPUT, name=output_subdir)
-            elif config.EXPERIMENT_TYPE == "endings_segmentation":
+            elif config.TYPE_EXP == "endings_segmentation":
                 output_subdir = "endings_segmentations"
                 img_utils.save_multilabel_img_as_multiple_files_endings(
                     config.CLASSES, seg, data_affine, config.PREDICT_IMG_OUTPUT, name=output_subdir
                 )
-            elif config.EXPERIMENT_TYPE == "peak_regression":
+            elif config.TYPE_EXP == "peak_regression":
                 output_subdir = args.TOM_output_dir
                 img_utils.save_multilabel_img_as_multiple_files_peaks(
                     config.FLIP_OUTPUT_PEAKS, config.CLASSES, seg, data_affine, config.PREDICT_IMG_OUTPUT, name=output_subdir
                 )
-            elif config.EXPERIMENT_TYPE == "dm_regression":
+            elif config.TYPE_EXP == "dm_regression":
                 output_subdir = "dm_regression"
                 img_utils.save_multilabel_img_as_multiple_files(config.CLASSES, seg, data_affine, config.PREDICT_IMG_OUTPUT, name=output_subdir)
             del seg  # Free memory (before we run tracking)
 
-    if config.EXPERIMENT_TYPE == "peak_regression":
+    if config.TYPE_EXP == "peak_regression":
         config.CLASSES = "All"
 
     if args.preprocess:
         if config.SINGLE_OUTPUT_FILE:
-            if config.EXPERIMENT_TYPE == "peak_regression":
+            if config.TYPE_EXP == "peak_regression":
                 raise ValueError("single_output_file not supported for TOMs")
             else:
-                preprocessing.move_to_subject_space_single_file(
-                    config.PREDICT_IMG_OUTPUT, config.EXPERIMENT_TYPE, output_subdir, output_float=output_float
-                )
+                preprocessing.move_to_subject_space_single_file(config.PREDICT_IMG_OUTPUT, config.TYPE_EXP, output_subdir, output_float=output_float)
         else:
             bundles = dataset_specific_utils.get_bundle_names(config.CLASSES)[1:]
-            preprocessing.move_to_subject_space(config.PREDICT_IMG_OUTPUT, bundles, config.EXPERIMENT_TYPE, output_subdir, output_float=output_float)
+            preprocessing.move_to_subject_space(config.PREDICT_IMG_OUTPUT, bundles, config.TYPE_EXP, output_subdir, output_float=output_float)
 
     preprocessing.clean_up(config.KEEP_INTERMEDIATE_FILES, config.PREDICT_IMG_OUTPUT, config.CSD_TYPE, preprocessing_done=args.preprocess)
 

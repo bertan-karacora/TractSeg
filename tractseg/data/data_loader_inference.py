@@ -137,14 +137,14 @@ class DataLoaderInference:
             exp_utils.print_verbose(config.VERBOSE, "Loading data from PREDICT_IMG input file")
             data = np.nan_to_num(self.data)
             # Use dummy mask in case we only want to predict on some data (where we do not have ground truth))
-            seg = np.zeros((config.INPUT_DIM[0], config.INPUT_DIM[0], config.INPUT_DIM[0], config.NR_OF_CLASSES)).astype(
+            seg = np.zeros((config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.NR_OF_CLASSES)).astype(
                 exp_utils.get_correct_labels_type()
             )
         elif self.subject is not None:
             if config.TYPE == "combined":
                 # Load from npy file for Fusion
-                data = np.load(join(config.PATH_DATA, config.DATASET_FOLDER, self.subject, config.FEATURES_FILENAME + ".npy"), mmap_mode="r")
-                seg = np.load(join(config.PATH_DATA, config.DATASET_FOLDER, self.subject, config.LABELS_FILENAME + ".npy"), mmap_mode="r")
+                data = np.load(join(config.PATH_DATA, self.subject, config.FILENAME_FEATURES + ".npy"), mmap_mode="r")
+                seg = np.load(join(config.PATH_DATA, self.subject, config.FILENAME_LABELS + ".npy"), mmap_mode="r")
                 data = np.nan_to_num(data)
                 seg = np.nan_to_num(seg)
                 data = np.reshape(data, (data.shape[0], data.shape[1], data.shape[2], data.shape[3] * data.shape[4]))
@@ -157,12 +157,12 @@ class DataLoaderInference:
                 if config.NR_OF_GRADIENTS == 18 * config.NR_SLICES:
                     data = peak_utils.peaks_to_tensors(data)
 
-                data, transformation = data_utils.pad_and_scale_img_to_square_img(data, target_size=config.INPUT_DIM[0], nr_cpus=1)
-                seg, transformation = data_utils.pad_and_scale_img_to_square_img(seg, target_size=config.INPUT_DIM[0], nr_cpus=1)
+                data, transformation = data_utils.pad_and_scale_img_to_square_img(data, target_size=config.SHAPE_INPUT[0], nr_cpus=1)
+                seg, transformation = data_utils.pad_and_scale_img_to_square_img(seg, target_size=config.SHAPE_INPUT[0], nr_cpus=1)
         else:
             raise ValueError("Neither 'data' nor 'subject' set.")
 
-        if config.DIM == "2D":
+        if len(config.SHAPE_INPUT):
             batch_gen = BatchGenerator2D_data_ordered_standalone((data, seg), batch_size=batch_size)
         else:
             batch_gen = BatchGenerator3D_data_ordered_standalone((data, seg), batch_size=batch_size)

@@ -55,7 +55,7 @@ class BatchGenerator3D_Nifti_random(SlimDataLoaderBase):
             seg = seg.transpose(3, 0, 1, 2)
 
             # Crop here instead of cropping entire batch at once to make each element in batch have same dimensions
-            data, seg = crop(data[None, ...], seg[None, ...], crop_size=tuple(config.INPUT_DIM))
+            data, seg = crop(data[None, ...], seg[None, ...], crop_size=tuple(config.SHAPE_INPUT))
             data = data.squeeze(axis=0)
             seg = seg.squeeze(axis=0)
 
@@ -66,13 +66,13 @@ class BatchGenerator3D_Nifti_random(SlimDataLoaderBase):
         y = np.array(y)
 
         # Can be replaced by crop -> shorter
-        # x = pad_nd_image(x, config.INPUT_DIM, mode='constant', kwargs={'constant_values': 0})
-        # y = pad_nd_image(y, config.INPUT_DIM, mode='constant', kwargs={'constant_values': 0})
-        # x = center_crop_3D_image_batched(x, config.INPUT_DIM)
-        # y = center_crop_3D_image_batched(y, config.INPUT_DIM)
+        # x = pad_nd_image(x, config.SHAPE_INPUT, mode='constant', kwargs={'constant_values': 0})
+        # y = pad_nd_image(y, config.SHAPE_INPUT, mode='constant', kwargs={'constant_values': 0})
+        # x = center_crop_3D_image_batched(x, config.SHAPE_INPUT)
+        # y = center_crop_3D_image_batched(y, config.SHAPE_INPUT)
 
         # Crop and pad to input size
-        # x, y = crop(x, y, crop_size=config.INPUT_DIM)
+        # x, y = crop(x, y, crop_size=config.SHAPE_INPUT)
 
         # This is needed for Schizo dataset, but only works with DAug=True
         # x = pad_nd_image(x, shape_must_be_divisible_by=(8, 8), mode='constant', kwargs={'constant_values': 0})
@@ -106,10 +106,10 @@ class DataLoaderTraining:
                 #   if 144/2=72 -> always exactly centered; otherwise a bit off center
                 #   (brain can get off image and will be cut then)
                 if config.DAUG_SCALE:
-                    center_dist_from_border = int(config.INPUT_DIM[0] / 2.0) - 10  # (144,144) -> 62
+                    center_dist_from_border = int(config.SHAPE_INPUT[0] / 2.0) - 10  # (144,144) -> 62
                     tfs.append(
                         SpatialTransform(
-                            tuple(config.INPUT_DIM),
+                            tuple(config.SHAPE_INPUT),
                             patch_center_dist_from_border=center_dist_from_border,
                             do_elastic_deform=config.DAUG_ELASTIC_DEFORM,
                             alpha=(90.0, 120.0),

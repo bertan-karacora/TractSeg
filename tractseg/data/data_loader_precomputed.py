@@ -28,7 +28,7 @@ class BatchGenerator2D_PrecomputedBatches(SlimDataLoaderBase):
 
     def generate_train_batch(self):
         type = self._data[0]
-        path = join(config.PATH_DATA, config.DATASET_FOLDER, type)
+        path = join(config.PATH_DATA, type)
         nr_of_files = len([name for name in os.listdir(path) if os.path.isfile(join(path, name))]) - 1
         idx = int(random.uniform(0, int(nr_of_files / 2.0)))
 
@@ -58,18 +58,18 @@ class DataLoaderPrecomputed:
         Somehow MultiThreadedAugmenter (with num_processes=1 and num_cached_per_queue=1) in ep1 fast (7s) but after
         that slower (10s). With this manual Iterator time is always the same (7.5s).
         """
-        print("Loading data from: " + join(config.PATH_DATA, config.DATASET_FOLDER))
+        print("Loading data from: " + join(config.PATH_DATA))
 
         num_processes = 1
 
-        nr_of_samples = len(subjects) * config.INPUT_DIM[0]
+        nr_of_samples = len(subjects) * config.SHAPE_INPUT[0]
         if num_batches is None:
             num_batches_multithr = int(nr_of_samples / batch_size / num_processes)  # nr batches for exactly one epoch
         else:
             num_batches_multithr = int(num_batches / num_processes)
 
         for i in range(num_batches_multithr):
-            path = join(config.PATH_DATA, config.DATASET_FOLDER, type)
+            path = join(config.PATH_DATA, type)
             nr_of_files = len([name for name in os.listdir(path) if os.path.isfile(join(path, name))]) - 2
             idx = int(random.uniform(0, int(nr_of_files / 2.0)))
 
