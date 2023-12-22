@@ -5,15 +5,13 @@ Info:
 Dimensions order for DeepLearningBatchGenerator: (batch_size, channels, x, y, [z])
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+from pathlib import Path
 from os.path import join
 import random
 
 import numpy as np
 import nibabel as nib
+import nrrd
 
 from batchgenerators.transforms.resample_transforms import ResampleTransform
 from batchgenerators.transforms.resample_transforms import SimulateLowResolutionTransform
@@ -56,139 +54,32 @@ def load_training_data(subject):
         data and labels as 3D array
     """
 
-    def load(filepath):
-        data = nib.load(filepath + ".nii.gz").get_fdata()
-        # data = np.load(filepath + ".npy", mmap_mode="r")
-        return data
-
-    if config.FEATURES_FILENAME == "12g90g270g":
-        rnd_choice = np.random.random()
-        if rnd_choice < 0.33:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_peaks"))
-        elif rnd_choice < 0.66:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "90g_125mm_peaks"))
+    def load_img(path_img):
+        if path_img.suffixes == [".nrrd"]:
+            # bonndit output: (4, r, x, y, z)
+            # TODO: check. Also consider copying, since transpose does not change memory layout (-> optimize data locality)
+            data_img, _ = nrrd.read(path_img)
+            data_img = data_img[1:].transpose(2, 3, 4, 1, 0)
+            data_img = data_img.reshape(*data_img.shape[:-2], -1)
+        elif path_img.suffixes == [".nii", ".gz"]:
+            data_img = nib.load(path_img).get_fdata()
         else:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "12g_125mm_peaks"))
+            raise ValueError("Unsupported input file type.")
 
-    elif config.FEATURES_FILENAME == "12g90g270gRaw32g":
-        rnd_choice = np.random.random()
-        if rnd_choice < 0.33:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_raw32g"))
-        elif rnd_choice < 0.66:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "90g_125mm_raw32g"))
-        else:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "12g_125mm_raw32g"))
+        return data_img
 
-    elif config.FEATURES_FILENAME == "12g90g270g_BX":
-        rnd_choice = np.random.random()
-        if rnd_choice < 0.33:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_bedpostx_peaks_scaled"))
-        elif rnd_choice < 0.66:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "90g_125mm_bedpostx_peaks_scaled"))
-        else:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "12g_125mm_bedpostx_peaks_scaled"))
+    path_subject = Path(config.PATH_DATA) / subject
+    data = load_img(path_subject / config.DIR_FEATURES / config.FILENAME_FEATURES)
 
-    elif config.FEATURES_FILENAME == "12g90g270g_FA":
-        rnd_choice = np.random.random()
-        if rnd_choice < 0.33:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_FA"))
-        elif rnd_choice < 0.66:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "90g_125mm_FA"))
-        else:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "12g_125mm_FA"))
-
-    elif config.FEATURES_FILENAME == "12g90g270g_CSD_BX":
-        rnd_choice_1 = np.random.random()
-        rnd_choice_2 = np.random.random()
-        if rnd_choice_1 < 0.5:  # CSD
-            if rnd_choice_2 < 0.33:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_peaks"))
-            elif rnd_choice_2 < 0.66:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "90g_125mm_peaks"))
-            else:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "12g_125mm_peaks"))
-        else:  # BX
-            if rnd_choice_2 < 0.33:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_bedpostx_peaks_scaled"))
-            elif rnd_choice_2 < 0.66:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "90g_125mm_bedpostx_peaks_scaled"))
-            else:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "12g_125mm_bedpostx_peaks_scaled"))
-            # Flip x axis to make BedpostX compatible with mrtrix CSD
-            data[:, :, :, 0] *= -1
-            data[:, :, :, 3] *= -1
-            data[:, :, :, 6] *= -1
-
-    elif config.FEATURES_FILENAME == "32g90g270g_CSD_BX":
-        rnd_choice_1 = np.random.random()
-        rnd_choice_2 = np.random.random()
-        if rnd_choice_1 < 0.5:  # CSD
-            if rnd_choice_2 < 0.33:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_peaks"))
-            elif rnd_choice_2 < 0.66:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "90g_125mm_peaks"))
-            else:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "32g_125mm_peaks"))
-        else:  # BX
-            if rnd_choice_2 < 0.5:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_bedpostx_peaks_scaled"))
-            else:
-                data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "32g_125mm_bedpostx_peaks_scaled"))
-            # Flip x axis to make BedpostX compatible with mrtrix CSD
-            data[:, :, :, 0] *= -1
-            data[:, :, :, 3] *= -1
-            data[:, :, :, 6] *= -1
-
-    elif config.FEATURES_FILENAME == "105g_CSD_BX":
-        rnd_choice_1 = np.random.random()
-        if rnd_choice_1 < 0.5:  # CSD
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "105g_2mm_peaks"))
-        else:  # BX
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "105g_2mm_bedpostx_peaks_scaled"))
-            # Flip x axis to make BedpostX compatible with mrtrix CSD
-            data[:, :, :, 0] *= -1
-            data[:, :, :, 3] *= -1
-            data[:, :, :, 6] *= -1
-
-    elif config.FEATURES_FILENAME == "32g270g_BX":
-        rnd_choice = np.random.random()
-        path_32g = join(config.PATH_DATA, config.DATASET_FOLDER, subject, "32g_125mm_bedpostx_peaks_scaled")
-        if rnd_choice < 0.5:
-            data = load(path_32g)
-            rnd_choice_2 = np.random.random()
-            if rnd_choice_2 < 0.5:
-                data[:, :, :, 6:9] = 0  # set third peak to 0
-        else:
-            data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_bedpostx_peaks_scaled"))
-
-    elif config.FEATURES_FILENAME == "T1_Peaks270g":
-        peaks = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_peaks"))
-        t1 = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "T1"))
-        data = np.concatenate((peaks, t1), axis=3)
-
-    elif config.FEATURES_FILENAME == "T1_Peaks12g90g270g":
-        rnd_choice = np.random.random()
-        if rnd_choice < 0.33:
-            peaks = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "270g_125mm_peaks"))
-        elif rnd_choice < 0.66:
-            peaks = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "90g_125mm_peaks"))
-        else:
-            peaks = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "12g_125mm_peaks"))
-        t1 = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, "T1"))
-        data = np.concatenate((peaks, t1), axis=3)
-
-    else:
-        data = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, config.FEATURES_FILENAME))
-
-    if "|" in config.LABELS_FILENAME:
-        parts = config.LABELS_FILENAME.split("|")
+    if "|" in config.FILENAME_LABELS:
+        parts = config.FILENAME_LABELS.split("|")
         seg = []  # [4, x, y, z, 54]
         for part in parts:
-            seg.append(load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, part)))
+            seg.append(load_img(path_subject / part))
         seg = np.array(seg).transpose(1, 2, 3, 4, 0)
         seg = seg.reshape(data.shape[:3] + (-1,))  # [x, y, z, 54*4]
     else:
-        seg = load(join(config.PATH_DATA, config.DATASET_FOLDER, subject, config.LABELS_FILENAME))
+        seg = load_img(path_subject / config.DIR_LABELS / config.FILENAME_LABELS)
 
     return data, seg
 
@@ -247,17 +138,17 @@ class BatchGenerator2D_Nifti_random(SlimDataLoaderBase):
             x, y = data_utils.sample_slices(data, seg, slice_idxs, slice_direction=slice_direction, labels_type=exp_utils.get_correct_labels_type())
 
         # Can be replaced by crop
-        # x = pad_nd_image(x, config.INPUT_DIM, mode='constant', kwargs={'constant_values': 0})
-        # y = pad_nd_image(y, config.INPUT_DIM, mode='constant', kwargs={'constant_values': 0})
-        # x = center_crop_2D_image_batched(x, config.INPUT_DIM)
-        # y = center_crop_2D_image_batched(y, config.INPUT_DIM)
+        # x = pad_nd_image(x, config.SHAPE_INPUT, mode='constant', kwargs={'constant_values': 0})
+        # y = pad_nd_image(y, config.SHAPE_INPUT, mode='constant', kwargs={'constant_values': 0})
+        # x = center_crop_2D_image_batched(x, config.SHAPE_INPUT)
+        # y = center_crop_2D_image_batched(y, config.SHAPE_INPUT)
 
         # If want to convert e.g. 1.25mm (HCP) image to 2mm image (bb)
         # x, y = self._zoom_x_and_y(x, y, 0.67)  # very slow -> try spatial_transform, should be fast
 
         if config.PAD_TO_SQUARE:
             # Crop and pad to input size
-            x, y = crop(x, y, crop_size=tuple(config.INPUT_DIM))  # does not work with img with batches and channels
+            x, y = crop(x, y, crop_size=tuple(config.SHAPE_INPUT))  # does not work with img with batches and channels
         else:
             # Works -> results as good?
             # Will pad each axis to be multiple of 16. (Each sample can end up having different dimensions. Also x and y
@@ -298,10 +189,10 @@ class BatchGenerator2D_Npy_random(SlimDataLoaderBase):
             else:
                 data = np.load(join(config.PATH_DATA, "HCP_fusion_npy_32g_25mm", subjects[subject_idx], "32g_25mm_xyz.npy"), mmap_mode="r")
             data = np.reshape(data, (data.shape[0], data.shape[1], data.shape[2], data.shape[3] * data.shape[4]))
-            seg = np.load(join(config.PATH_DATA, config.DATASET_FOLDER, subjects[subject_idx], config.LABELS_FILENAME + ".npy"), mmap_mode="r")
+            seg = np.load(join(config.PATH_DATA, subjects[subject_idx], config.FILENAME_LABELS + ".npy"), mmap_mode="r")
         else:
-            data = np.load(join(config.PATH_DATA, config.DATASET_FOLDER, subjects[subject_idx], config.FEATURES_FILENAME + ".npy"), mmap_mode="r")
-            seg = np.load(join(config.PATH_DATA, config.DATASET_FOLDER, subjects[subject_idx], config.LABELS_FILENAME + ".npy"), mmap_mode="r")
+            data = np.load(join(config.PATH_DATA, subjects[subject_idx], config.FILENAME_FEATURES + ".npy"), mmap_mode="r")
+            seg = np.load(join(config.PATH_DATA, subjects[subject_idx], config.FILENAME_LABELS + ".npy"), mmap_mode="r")
 
         data = np.nan_to_num(data)
         seg = np.nan_to_num(seg)
@@ -354,12 +245,12 @@ class DataLoaderTraining:
                         scale = (0.9, 1.5)
 
                     if config.PAD_TO_SQUARE:
-                        patch_size = tuple(config.INPUT_DIM)
+                        patch_size = tuple(config.SHAPE_INPUT)
                     else:
                         patch_size = None  # keeps dimensions of the data
 
                     # spatial transform automatically crops/pads to correct size
-                    center_dist_from_border = int(config.INPUT_DIM[0] / 2.0) - 10  # (144,144) -> 62
+                    center_dist_from_border = int(config.SHAPE_INPUT[0] / 2.0) - 10  # (144,144) -> 62
                     tfs.append(
                         SpatialTransformUsed(
                             patch_size,
