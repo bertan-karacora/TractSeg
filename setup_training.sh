@@ -293,6 +293,16 @@ crop() {
     echo "Cropping features and tracts finished."
 }
 
+crop_union() {
+    echo "Cropping features and tracts..."
+
+    python tractseg/utils/crop_union.py \
+        --config_exp custom_experiment.yaml \
+        --ref mtdeconv/wmvolume.nrrd
+
+    echo "Cropping features and tracts finished."
+}
+
 main() {
     # activate_python_venv
     # install_bonndit
@@ -305,7 +315,7 @@ main() {
     # extract_fods
     # extract_low_rank_approx
 
-    crop
+    crop_union
 }
 
 # This script assumes data from the HCP is already available.

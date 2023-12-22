@@ -43,6 +43,7 @@ def crop_to_bbox(img, bbox, spatial_channels_last=False):
 
 
 def main():
+    # TODO: Crop for largest bbox in entire dataset
     args = parse_args()
 
     if args.path_input.endswith(".nrrd"):
