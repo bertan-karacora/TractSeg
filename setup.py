@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="TractSeg",
-    version="2.9",
+    version="3.0",
     description="Fast and accurate segmentation of white matter bundles",
     long_description="See README.md for more details.",
     url="https://github.com/bertan-karacora/TractSeg/",
@@ -36,15 +36,8 @@ setuptools.setup(
     scripts=[
         "bin/TractSeg",
         "bin/ExpRunner",
-        "bin/flip_peaks",
-        "bin/calc_FA",
         "bin/Tractometry",
-        "bin/download_all_pretrained_weights",
         "bin/Tracking",
-        "bin/rotate_bvecs",
-        "bin/plot_tractometry_results",
-        "bin/get_image_spacing",
-        "bin/remove_negative_values",
     ],
     include_package_data=True,
 )

@@ -39,7 +39,7 @@ def parse_subjects_file(file_path):
                 bundles_string = l.split("=")[1]
                 bundles = bundles_string.split(" ")
 
-                valid_bundles = dataset_specific_utils.get_bundle_names("tractometry50")[1:]
+                valid_bundles = dataset_specific_utils.get_classes("tractometry50")[1:]
                 for bundle in bundles:
                     if bundle not in valid_bundles:
                         raise ValueError("Invalid bundle name: {}".format(bundle))
@@ -49,7 +49,7 @@ def parse_subjects_file(file_path):
                 plot_3D_path = l.split("=")[1]
 
         if bundles is None:
-            bundles = dataset_specific_utils.get_bundle_names("tractometry50")[1:]
+            bundles = dataset_specific_utils.get_classes("tractometry50")[1:]
 
     df = pd.read_csv(file_path, sep=" ", comment="#")
     df["subject_id"] = df["subject_id"].astype(str)
@@ -393,7 +393,7 @@ def main():
     else:
         raise ValueError("Invalid second column header (only 'group' or 'target' allowed)")
 
-    all_bundles = dataset_specific_utils.get_bundle_names("tractometry50")[1:]
+    all_bundles = dataset_specific_utils.get_classes("tractometry50")[1:]
 
     values = {}
     for subject in meta_data["subject_id"]:
