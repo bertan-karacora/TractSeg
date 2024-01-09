@@ -12,7 +12,7 @@ class test_functions(unittest.TestCase):
         pass
 
     def test_bundle_names(self):
-        bundles = dataset_specific_utils.get_bundle_names("test_single")
+        bundles = dataset_specific_utils.get_classes("test_single")
         self.assertListEqual(bundles, ["BG", "CST_right"], "Error in list of bundle names")
 
 

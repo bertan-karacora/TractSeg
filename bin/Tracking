@@ -23,7 +23,7 @@ warnings.filterwarnings("ignore", message="numpy.ufunc size changed")  # hide Cy
 
 
 def parse_bundles_string(bundles_string, classes):
-    all_bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
+    all_bundles = dataset_specific_utils.get_classes(classes)[1:]
     if bundles_string == "all":
         return all_bundles
     else:
@@ -159,11 +159,11 @@ def main():
             tracking_algorithm = "fixed_prob"
 
     if args.test == 1:
-        bundles = dataset_specific_utils.get_bundle_names("test")[1:]
+        bundles = dataset_specific_utils.get_classes("test")[1:]
     elif args.test == 2:
-        bundles = dataset_specific_utils.get_bundle_names("toy")[1:]
+        bundles = dataset_specific_utils.get_classes("toy")[1:]
     elif args.test == 3:
-        bundles = dataset_specific_utils.get_bundle_names("test_single")[1:]
+        bundles = dataset_specific_utils.get_classes("test_single")[1:]
     else:
         bundles = parse_bundles_string(args.bundles_string, config.CLASSES)
 

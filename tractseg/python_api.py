@@ -111,7 +111,7 @@ def run_tractseg(
     config.LOAD_WEIGHTS = True
     config.DROPOUT_SAMPLING = dropout_sampling
     config.THRESHOLD = threshold
-    config.NR_CPUS = nr_cpus
+    config.NUM_CPUS = nr_cpus
     config.SHAPE_INPUT = dataset_specific_utils.get_correct_input_dim()
     config.RESET_LAST_LAYER = False
 
@@ -161,7 +161,7 @@ def run_tractseg(
 
     if config.TYPE_EXP == "tract_segmentation" or config.TYPE_EXP == "endings_segmentation" or config.TYPE_EXP == "dm_regression":
         print("Loading weights from: {}".format(config.PATH_WEIGHTS))
-        config.NR_OF_CLASSES = len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
+        len(config.CLASSES) = len(dataset_specific_utils.get_classes(config.CLASSES)[1:])
         utils.download_pretrained_weights(
             experiment_type=config.TYPE_EXP, dropout_sampling=config.DROPOUT_SAMPLING, tract_definition=tract_definition
         )
@@ -205,11 +205,11 @@ def run_tractseg(
         }
         if peak_regression_part == "All":
             parts = ["Part1", "Part2", "Part3", "Part4"]
-            seg_all = np.zeros((data.shape[0], data.shape[1], data.shape[2], config.NR_OF_CLASSES * 3))
+            seg_all = np.zeros((data.shape[0], data.shape[1], data.shape[2], len(config.CLASSES) * 3))
         else:
             parts = [peak_regression_part]
             config.CLASSES = "All_" + peak_regression_part
-            config.NR_OF_CLASSES = 3 * len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
+            len(config.CLASSES) = 3 * len(dataset_specific_utils.get_classes(config.CLASSES)[1:])
 
         for idx, part in enumerate(parts):
             if manual_exp_name is not None:
@@ -219,7 +219,7 @@ def run_tractseg(
                 config.PATH_WEIGHTS = join(config.PATH_DIR_WEIGHTS, weights[part])
             print("Loading weights from: {}".format(config.PATH_WEIGHTS))
             config.CLASSES = "All_" + part
-            config.NR_OF_CLASSES = 3 * len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
+            len(config.CLASSES) = 3 * len(dataset_specific_utils.get_classes(config.CLASSES)[1:])
             utils.download_pretrained_weights(
                 experiment_type=config.TYPE_EXP, dropout_sampling=config.DROPOUT_SAMPLING, part=part, tract_definition=tract_definition
             )
@@ -238,25 +238,25 @@ def run_tractseg(
                 seg = direction_merger.mean_fusion_peaks(seg_xyz, nr_cpus=nr_cpus)
 
             if peak_regression_part == "All":
-                seg_all[:, :, :, (idx * config.NR_OF_CLASSES) : (idx * config.NR_OF_CLASSES + config.NR_OF_CLASSES)] = seg
+                seg_all[:, :, :, (idx * len(config.CLASSES)) : (idx * len(config.CLASSES) + len(config.CLASSES))] = seg
 
         if peak_regression_part == "All":
             config.CLASSES = "All"
-            config.NR_OF_CLASSES = 3 * len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
+            len(config.CLASSES) = 3 * len(dataset_specific_utils.get_classes(config.CLASSES)[1:])
             seg = seg_all
 
     if config.TYPE_EXP == "tract_segmentation" and bundle_specific_postprocessing and not dropout_sampling:
         # Runtime ~4s
-        seg = img_utils.bundle_specific_postprocessing(seg, dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
+        seg = img_utils.bundle_specific_postprocessing(seg, dataset_specific_utils.get_classes(config.CLASSES)[1:])
 
     # runtime on HCP data: 5.1s
     seg = data_utils.cut_and_scale_img_back_to_original_img(seg, transformation, nr_cpus=nr_cpus)
     # runtime on HCP data: 1.6s
-    seg = data_utils.add_original_zero_padding_again(seg, bbox, original_shape, config.NR_OF_CLASSES)
+    seg = data_utils.add_original_zero_padding_again(seg, bbox, original_shape, len(config.CLASSES))
 
     if config.TYPE_EXP == "peak_regression":
         seg = peak_utils.mask_and_normalize_peaks(
-            seg, tract_segmentations_path, dataset_specific_utils.get_bundle_names(config.CLASSES)[1:], TOM_dilation, nr_cpus=nr_cpus
+            seg, tract_segmentations_path, dataset_specific_utils.get_classes(config.CLASSES)[1:], TOM_dilation, nr_cpus=nr_cpus
         )
 
     if config.TYPE_EXP == "tract_segmentation" and postprocess and not dropout_sampling:
@@ -264,7 +264,7 @@ def run_tractseg(
         # Runtime ~1.5s for  2mm resolution
         st = time.time()
         seg = img_utils.postprocess_segmentations(
-            seg, dataset_specific_utils.get_bundle_names(config.CLASSES)[1:], blob_thr=blob_size_thr, hole_closing=None
+            seg, dataset_specific_utils.get_classes(config.CLASSES)[1:], blob_thr=blob_size_thr, hole_closing=None
         )
 
     exp_utils.print_verbose(config.VERBOSE, "Took {}s".format(round(time.time() - start_time, 2)))

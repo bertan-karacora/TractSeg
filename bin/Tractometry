@@ -90,14 +90,14 @@ def main():
     scalar_image = nib.load(args.scalar_img)
 
     if args.test == 1:
-        bundles = dataset_specific_utils.get_bundle_names("test")[1:]
+        bundles = dataset_specific_utils.get_classes("test")[1:]
     elif args.test == 2:
-        bundles = dataset_specific_utils.get_bundle_names("toy")[1:]
+        bundles = dataset_specific_utils.get_classes("toy")[1:]
         DILATION = 0
     elif args.test == 3:
-        bundles = dataset_specific_utils.get_bundle_names("test_single")[1:]
+        bundles = dataset_specific_utils.get_classes("test_single")[1:]
     else:
-        bundles = dataset_specific_utils.get_bundle_names("tractometry50")[1:]
+        bundles = dataset_specific_utils.get_classes("tractometry50")[1:]
 
     results = []
     for bundle in tqdm(bundles):

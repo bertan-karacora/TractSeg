@@ -34,13 +34,13 @@ class BaseModel:
         if not inference:
             torch.backends.cudnn.benchmark = True
 
-        if config.NR_CPUS > 0:
-            torch.set_num_threads(config.NR_CPUS)
+        # if config.NUM_CPUS > 0:
+        #     torch.set_num_threads(config.NUM_CPUS)
 
         if config.SEG_INPUT == "Peaks" and config.TYPE == "single_direction":
             NR_OF_GRADIENTS = config.NR_OF_GRADIENTS
         elif config.SEG_INPUT == "Peaks" and config.TYPE == "combined":
-            config.NR_OF_GRADIENTS = 3 * config.NR_OF_CLASSES
+            config.NR_OF_GRADIENTS = 3 * len(config.CLASSES)
         else:
             config.NR_OF_GRADIENTS = 33
 
@@ -64,7 +64,7 @@ class BaseModel:
         NetworkClass = getattr(importlib.import_module("tractseg.models." + config.MODEL.lower()), config.MODEL)
         self.net = NetworkClass(
             n_input_channels=NR_OF_GRADIENTS,
-            n_classes=config.NR_OF_CLASSES,
+            n_classes=len(config.CLASSES),
             n_filt=config.UNET_NR_FILT,
             batchnorm=config.BATCH_NORM,
             dropout=config.USE_DROPOUT,
@@ -105,7 +105,7 @@ class BaseModel:
 
         # Reset weights of last layer for transfer learning
         # if config.RESET_LAST_LAYER:
-        #     self.net.conv_5 = nn.Conv2d(config.UNET_NR_FILT, config.NR_OF_CLASSES, kernel_size=1,
+        #     self.net.conv_5 = nn.Conv2d(config.UNET_NR_FILT, len(config.CLASSES), kernel_size=1,
         #                                 stride=1, padding=0, bias=True).to(self.device)
 
     def train(self, X, y, weight_factor=None):
@@ -119,9 +119,9 @@ class BaseModel:
 
         if weight_factor is not None:
             if len(y.shape) == 4:  # 2D
-                weights = torch.ones((config.BATCH_SIZE, config.NR_OF_CLASSES, y.shape[2], y.shape[3])).cuda()
+                weights = torch.ones((config.BATCH_SIZE, len(config.CLASSES), y.shape[2], y.shape[3])).cuda()
             else:  # 3D
-                weights = torch.ones((config.BATCH_SIZE, config.NR_OF_CLASSES, y.shape[2], y.shape[3], y.shape[4])).cuda()
+                weights = torch.ones((config.BATCH_SIZE, len(config.CLASSES), y.shape[2], y.shape[3], y.shape[4])).cuda()
             bundle_mask = y > 0
             weights[bundle_mask.data] *= weight_factor  # 10
 
@@ -182,9 +182,9 @@ class BaseModel:
 
         if weight_factor is not None:
             if len(y.shape) == 4:  # 2D
-                weights = torch.ones((config.BATCH_SIZE, config.NR_OF_CLASSES, y.shape[2], y.shape[3])).cuda()
+                weights = torch.ones((config.BATCH_SIZE, len(config.CLASSES), y.shape[2], y.shape[3])).cuda()
             else:  # 3D
-                weights = torch.ones((config.BATCH_SIZE, config.NR_OF_CLASSES, y.shape[2], y.shape[3], y.shape[4])).cuda()
+                weights = torch.ones((config.BATCH_SIZE, len(config.CLASSES), y.shape[2], y.shape[3], y.shape[4])).cuda()
             bundle_mask = y > 0
             weights[bundle_mask.data] *= weight_factor
             if config.TYPE_EXP == "peak_regression":

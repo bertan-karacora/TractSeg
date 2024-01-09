@@ -344,7 +344,7 @@ def main():
     for part in parts:
         if part.startswith("Part"):
             config.CLASSES = "All_" + part
-            config.NR_OF_CLASSES = 3 * len(dataset_specific_utils.get_bundle_names(config.CLASSES)[1:])
+            len(config.CLASSES) = 3 * len(dataset_specific_utils.get_classes(config.CLASSES)[1:])
 
         seg = run_tractseg(
             data,
@@ -438,7 +438,7 @@ def main():
             else:
                 preprocessing.move_to_subject_space_single_file(config.PREDICT_IMG_OUTPUT, config.TYPE_EXP, output_subdir, output_float=output_float)
         else:
-            bundles = dataset_specific_utils.get_bundle_names(config.CLASSES)[1:]
+            bundles = dataset_specific_utils.get_classes(config.CLASSES)[1:]
             preprocessing.move_to_subject_space(config.PREDICT_IMG_OUTPUT, bundles, config.TYPE_EXP, output_subdir, output_float=output_float)
 
     preprocessing.clean_up(config.KEEP_INTERMEDIATE_FILES, config.PREDICT_IMG_OUTPUT, config.CSD_TYPE, preprocessing_done=args.preprocess)

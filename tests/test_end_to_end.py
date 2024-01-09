@@ -32,7 +32,7 @@ class test_end_to_end(unittest.TestCase):
         self.assertTrue(images_equal, "CSD peaks not correct")
 
     def test_tractseg_output_docker(self):
-        bundles = dataset_specific_utils.get_bundle_names("bundles_all72")[1:]
+        bundles = dataset_specific_utils.get_classes("bundles_all72")[1:]
         for bundle in bundles:
             img_ref = nib.load("tests/reference_files/bundle_segmentations/" + bundle + ".nii.gz").get_fdata().astype(np.uint8)
             img_new = nib.load("resources/examples/docker_test/bundle_segmentations/" + bundle + ".nii.gz").get_fdata().astype(np.uint8)
@@ -110,7 +110,7 @@ class test_end_to_end(unittest.TestCase):
         self.assertTrue(images_equal, "Density maps are not correct (bundle: CA)")
 
     def test_tractseg_output(self):
-        bundles = dataset_specific_utils.get_bundle_names("bundles_all72")[1:]
+        bundles = dataset_specific_utils.get_classes("bundles_all72")[1:]
         for bundle in bundles:
             img_ref = nib.load("tests/reference_files/bundle_segmentations/" + bundle + ".nii.gz").get_fdata().astype(np.uint8)
             img_new = nib.load("resources/examples/tractseg_output/bundle_segmentations/" + bundle + ".nii.gz").get_fdata().astype(np.uint8)
@@ -118,7 +118,7 @@ class test_end_to_end(unittest.TestCase):
             self.assertTrue(images_equal, "Tract segmentations are not correct (bundle: " + bundle + ")")
 
     def test_tractseg_output_SR_noPP(self):
-        bundles = dataset_specific_utils.get_bundle_names("bundles_all72")[1:]
+        bundles = dataset_specific_utils.get_classes("bundles_all72")[1:]
         for bundle in bundles:
             # IFO very different on travis than locally. Unclear why. All other bundles are fine.
             if bundle != "IFO_right":
@@ -138,7 +138,7 @@ class test_end_to_end(unittest.TestCase):
                 )
 
     def test_endingsseg_output(self):
-        bundles = dataset_specific_utils.get_bundle_names("bundles_all72")[1:]
+        bundles = dataset_specific_utils.get_classes("bundles_all72")[1:]
         for bundle in bundles:
             img_ref = nib.load("tests/reference_files/endings_segmentations/" + bundle + "_b.nii.gz").get_fdata().astype(np.uint8)
             img_new = nib.load("resources/examples/tractseg_output/endings_segmentations/" + bundle + "_b.nii.gz").get_fdata().astype(np.uint8)
@@ -151,7 +151,7 @@ class test_end_to_end(unittest.TestCase):
             self.assertTrue(images_equal, "Bundle endings are not correct (bundle: " + bundle + "_e)")
 
     def test_peakreg_output(self):
-        bundles = dataset_specific_utils.get_bundle_names("bundles_all72")[1:]
+        bundles = dataset_specific_utils.get_classes("bundles_all72")[1:]
         for bundle in bundles:
             img_ref = nib.load("tests/reference_files/TOM/" + bundle + ".nii.gz").get_fdata()
             img_new = nib.load("resources/examples/tractseg_output/TOM/" + bundle + ".nii.gz").get_fdata()

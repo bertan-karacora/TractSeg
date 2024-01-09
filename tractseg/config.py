@@ -47,7 +47,7 @@ def set_attributes(config):
     # See: https://stackoverflow.com/questions/30556857/creating-a-static-class-with-no-instances
     # Note: This is not secure whatsoever (but the original code isn't either).
     for key, value in config.items():
-        globals()[key] = value
+        globals()[key.upper()] = value
 
 
 def set_config_system():

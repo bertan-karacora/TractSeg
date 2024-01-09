@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -182,10 +181,10 @@ def calc_peak_dice_onlySeg(classes, y_pred, y_true):
     Create binary mask of peaks by simple thresholding. Then calculate Dice.
     """
     score_per_bundle = {}
-    bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
+    bundles = dataset_specific_utils.get_classes(classes)[1:]
     for idx, bundle in enumerate(bundles):
-        y_pred_bund = y_pred[:, :, :, (idx * 3):(idx * 3) + 3]
-        y_true_bund = y_true[:, :, :, (idx * 3):(idx * 3) + 3]      # [x,y,z,3]
+        y_pred_bund = y_pred[:, :, :, (idx * 3) : (idx * 3) + 3]
+        y_true_bund = y_true[:, :, :, (idx * 3) : (idx * 3) + 3]  # [x,y,z,3]
 
         # 0.1 -> keep some outliers, but also some holes already; 0.2 also ok (still looks like e.g. CST)
         #  Resulting dice for 0.1 and 0.2 very similar
@@ -200,10 +199,10 @@ def calc_peak_dice_onlySeg(classes, y_pred, y_true):
 
 def calc_peak_dice(classes, y_pred, y_true, max_angle_error=[0.9]):
     score_per_bundle = {}
-    bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
+    bundles = dataset_specific_utils.get_classes(classes)[1:]
     for idx, bundle in enumerate(bundles):
-        y_pred_bund = y_pred[:, :, :, (idx * 3):(idx * 3) + 3]
-        y_true_bund = y_true[:, :, :, (idx * 3):(idx * 3) + 3]  # (x,y,z,3)
+        y_pred_bund = y_pred[:, :, :, (idx * 3) : (idx * 3) + 3]
+        y_true_bund = y_true[:, :, :, (idx * 3) : (idx * 3) + 3]  # (x,y,z,3)
 
         angles = abs(peak_utils.angle_last_dim(y_pred_bund, y_true_bund))
         angles_binary = angles > max_angle_error[0]
@@ -243,14 +242,14 @@ def calc_peak_dice_pytorch(classes, y_pred, y_true, max_angle_error=[0.9]):
     y_true = y_true.permute(0, 2, 3, 1)
     y_pred = y_pred.permute(0, 2, 3, 1)
 
-    #Single threshold
+    # Single threshold
     if len(max_angle_error) == 1:
         score_per_bundle = {}
-        bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
+        bundles = dataset_specific_utils.get_classes(classes)[1:]
         for idx, bundle in enumerate(bundles):
             # if bundle == "CST_right":
-            y_pred_bund = y_pred[:, :, :, (idx * 3):(idx * 3) + 3].contiguous()
-            y_true_bund = y_true[:, :, :, (idx * 3):(idx * 3) + 3].contiguous()  # [x, y, z, 3]
+            y_pred_bund = y_pred[:, :, :, (idx * 3) : (idx * 3) + 3].contiguous()
+            y_true_bund = y_true[:, :, :, (idx * 3) : (idx * 3) + 3].contiguous()  # [x, y, z, 3]
 
             angles = pytorch_utils.angle_last_dim(y_pred_bund, y_true_bund)
             gt_binary = y_true_bund.sum(dim=-1) > 0
@@ -264,13 +263,13 @@ def calc_peak_dice_pytorch(classes, y_pred, y_true, max_angle_error=[0.9]):
 
         return score_per_bundle
 
-    #multiple thresholds
+    # multiple thresholds
     else:
         score_per_bundle = {}
-        bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
+        bundles = dataset_specific_utils.get_classes(classes)[1:]
         for idx, bundle in enumerate(bundles):
-            y_pred_bund = y_pred[:, :, :, (idx * 3):(idx * 3) + 3].contiguous()
-            y_true_bund = y_true[:, :, :, (idx * 3):(idx * 3) + 3].contiguous()  # [x, y, z, 3]
+            y_pred_bund = y_pred[:, :, :, (idx * 3) : (idx * 3) + 3].contiguous()
+            y_true_bund = y_true[:, :, :, (idx * 3) : (idx * 3) + 3].contiguous()  # [x, y, z, 3]
 
             angles = pytorch_utils.angle_last_dim(y_pred_bund, y_true_bund)
             gt_binary = y_true_bund.sum(dim=-1) > 0
@@ -289,10 +288,10 @@ def calc_peak_dice_pytorch(classes, y_pred, y_true, max_angle_error=[0.9]):
 
 def calc_peak_length_dice(classes, y_pred, y_true, max_angle_error=[0.9], max_length_error=0.1):
     score_per_bundle = {}
-    bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
+    bundles = dataset_specific_utils.get_classes(classes)[1:]
     for idx, bundle in enumerate(bundles):
-        y_pred_bund = y_pred[:, :, :, (idx * 3):(idx * 3) + 3]
-        y_true_bund = y_true[:, :, :, (idx * 3):(idx * 3) + 3]  # [x, y, z, 3]
+        y_pred_bund = y_pred[:, :, :, (idx * 3) : (idx * 3) + 3]
+        y_true_bund = y_true[:, :, :, (idx * 3) : (idx * 3) + 3]  # [x, y, z, 3]
 
         angles = abs(peak_utils.angle_last_dim(y_pred_bund, y_true_bund))
 
@@ -325,19 +324,18 @@ def calc_peak_length_dice_pytorch(classes, y_pred, y_true, max_angle_error=[0.9]
         y_true = y_true.permute(0, 2, 3, 4, 1)
         y_pred = y_pred.permute(0, 2, 3, 4, 1)
 
-
-    #Single threshold
+    # Single threshold
     score_per_bundle = {}
-    bundles = dataset_specific_utils.get_bundle_names(classes)[1:]
+    bundles = dataset_specific_utils.get_classes(classes)[1:]
     for idx, bundle in enumerate(bundles):
-        y_pred_bund = y_pred[..., (idx * 3):(idx * 3) + 3].contiguous()
-        y_true_bund = y_true[..., (idx * 3):(idx * 3) + 3].contiguous() # [x, y, z, 3]
+        y_pred_bund = y_pred[..., (idx * 3) : (idx * 3) + 3].contiguous()
+        y_true_bund = y_true[..., (idx * 3) : (idx * 3) + 3].contiguous()  # [x, y, z, 3]
 
         angles = pytorch_utils.angle_last_dim(y_pred_bund, y_true_bund)
 
-        lenghts_pred = torch.norm(y_pred_bund, 2., -1)
+        lenghts_pred = torch.norm(y_pred_bund, 2.0, -1)
         lengths_true = torch.norm(y_true_bund, 2, -1)
-        lengths_binary = torch.abs(lenghts_pred-lengths_true) < (max_length_error * lengths_true)
+        lengths_binary = torch.abs(lenghts_pred - lengths_true) < (max_length_error * lengths_true)
         lengths_binary = lengths_binary.view(-1)
 
         gt_binary = y_true_bund.sum(dim=-1) > 0
@@ -370,8 +368,8 @@ def unconfound(y, confound, group_data=False):
         y_correct: [samples, targets]
     """
     # Demeaning beforehand or using intercept=True has similar effect
-    #y = demean(y)
-    #confound = demean(confound)
+    # y = demean(y)
+    # confound = demean(confound)
 
     lr = LinearRegression(fit_intercept=True).fit(confound, y)  # lr.coef_: [targets, confounds]
     if group_data:
