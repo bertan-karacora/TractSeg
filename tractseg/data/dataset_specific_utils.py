@@ -1,21 +1,21 @@
 import numpy as np
 
 import tractseg.config as config
-from tractseg.data import labels, subjects
+from tractseg.data import classsets, subjectsets
 from tractseg.libs import img_utils
 
 
-def get_labels(labelset):
-    l = labels.get_labels(labelset)
-    return l
-
-
 def get_subjects(dataset):
-    s = subjects.get_subjects(dataset)
-    return s
+    subjects = subjectsets.get_subjects(dataset)
+    return subjects
 
 
-def get_cv_fold(fold):
+def get_classes(classset):
+    classes = classsets.get_classes(classset)
+    return classes
+
+
+def get_cvfold(fold):
     # 5 fold CV ok (score only 1%-point worse than 10 folds (80 vs 60 train subjects) (10 Fold CV impractical!)
     num_folds = 5
     num_folds_train, num_folds_val, num_folds_test = 3, 1, 1
@@ -24,7 +24,7 @@ def get_cv_fold(fold):
     validate = [(fold + num_folds_train + i) % num_folds for i in range(num_folds_val)]
     test = [(fold + num_folds_train + num_folds_val + i) % num_folds for i in range(num_folds_test)]
 
-    s = subjects.get_subjects(config.DATASET)
+    s = get_subjects(config.DATASET)
     size_chunk = 21
     chunks_s = np.asarray([s[i : i + size_chunk] for i in range(0, len(s), size_chunk)])
 
