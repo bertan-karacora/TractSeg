@@ -449,11 +449,10 @@ inside of the file.)
 7. Adapt the file `tractseg/config/custom/My_custom_experiment.py`.
 8. Create a file `config.txt`. This contains the path to your data directory `working_dir=XXX`, e.g.
 `working_dir=custom_path`.
-9. Adapt `tractseg.data.dataset_specific_utils.get_bundle_names()` with the bundles you use in your reference data.
-10. Adapt `tractseg.data.dataset_specific_utils.get_labels_filename()` with the names of your label files.
-11. Adapt `tractseg.data.Subjects` with the list of your subject IDs.
-12. Run `ExpRunner --config My_custom_experiment`
-13. `custom_path/hcp_exp/My_custom_experiment` contains the results
+9. Adapt `tractseg.data.classsets` with the bundles you use in your reference data.
+10.  Adapt `tractseg.data.subjectsets` with the list of your subject IDs.
+11.  Run `ExpRunner --config My_custom_experiment --train --validate --test`
+12.  `custom_path/hcp_exp/My_custom_experiment` contains the results
 
 ## Docker
 

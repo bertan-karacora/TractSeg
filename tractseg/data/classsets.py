@@ -674,8 +674,6 @@ BUNDLES_TEST = ["CST_right", "CA", "IFO_right"]
 BUNDLES_TEST_SINGLE = ["CST_right"]
 
 
-def get_labels(labelset):
-    bundles = globals()[labelset.upper()]
-    # Add Background label (is always beginning of list)
-    labels = ["BG"] + bundles
-    return labels
+def get_classes(classset):
+    classes = globals()[classset.upper()]
+    return classes
