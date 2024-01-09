@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -22,9 +21,11 @@ from tractseg.libs import fiber_utils
 from tractseg.libs import img_utils
 
 import matplotlib
-matplotlib.use('Agg')  # Solves error with ssh and plotting
-#https://www.quora.com/If-a-Python-program-already-has-numerous-matplotlib-plot-functions-what-is-the-quickest-way-to-convert-them-all-to-a-way-where-all-the-plots-can-be-produced-as-hard-images-with-minimal-modification-of-code
+
+matplotlib.use("Agg")  # Solves error with ssh and plotting
+# https://www.quora.com/If-a-Python-program-already-has-numerous-matplotlib-plot-functions-what-is-the-quickest-way-to-convert-them-all-to-a-way-where-all-the-plots-can-be-produced-as-hard-images-with-minimal-modification-of-code
 import matplotlib.pyplot as plt
+
 # Might fix problems with matplotlib over ssh (failing after connection is open for longer)
 #   http://stackoverflow.com/questions/2443702/problem-running-python-matplotlib-in-background-after-ending-ssh-session
 plt.ioff()
@@ -39,8 +40,7 @@ def plot_mask(renderer, mask_data, affine, x_current, y_current, orientation="ax
         if orientation == "sagittal":
             brain_mask = brain_mask.transpose(2, 1, 0)
             brain_mask = brain_mask[::-1, :, :]
-        cont_actor = vtk_utils.contour_from_roi_smooth(brain_mask, affine=affine,
-                                                       color=[.9, .9, .9], opacity=.1, smoothing=30)
+        cont_actor = vtk_utils.contour_from_roi_smooth(brain_mask, affine=affine, color=[0.9, 0.9, 0.9], opacity=0.1, smoothing=30)
         cont_actor.SetPosition(x_current, y_current, 0)
         renderer.add(cont_actor)
 
@@ -51,10 +51,9 @@ def plot_mask(renderer, mask_data, affine, x_current, y_current, orientation="ax
     if orientation == "sagittal":
         mask = mask.transpose(2, 1, 0)
         mask = mask[::-1, :, :]
-    color = [1, .27, .18]  # red
+    color = [1, 0.27, 0.18]  # red
 
-    cont_actor = vtk_utils.contour_from_roi_smooth(mask, affine=affine,
-                                                   color=color, opacity=1, smoothing=smoothing)
+    cont_actor = vtk_utils.contour_from_roi_smooth(mask, affine=affine, color=color, opacity=1, smoothing=smoothing)
     cont_actor.SetPosition(x_current, y_current, 0)
     renderer.add(cont_actor)
 
@@ -79,15 +78,15 @@ def plot_tracts(classes, bundle_segmentations, affine, out_dir, brain_mask=None)
     bundles = ["CST_right", "CA", "IFO_right"]
 
     renderer = window.Scene()
-    renderer.projection('parallel')
+    renderer.projection("parallel")
 
     rows = len(bundles)
     X, Y, Z = bundle_segmentations.shape[:3]
     for j, bundle in enumerate(bundles):
-        i = 0  #only one method
+        i = 0  # only one method
 
         bundle_idx = dataset_specific_utils.get_bundle_names(classes)[1:].index(bundle)
-        mask_data = bundle_segmentations[:,:,:,bundle_idx]
+        mask_data = bundle_segmentations[:, :, :, bundle_idx]
 
         if bundle == "CST_right":
             orientation = "axial"
@@ -98,7 +97,7 @@ def plot_tracts(classes, bundle_segmentations, affine, out_dir, brain_mask=None)
         else:
             orientation = "axial"
 
-        #bigger: more border
+        # bigger: more border
         if orientation == "axial":
             border_y = -100
         else:
@@ -107,10 +106,9 @@ def plot_tracts(classes, bundle_segmentations, affine, out_dir, brain_mask=None)
         x_current = X * i  # column (width)
         y_current = rows * (Y * 2 + border_y) - (Y * 2 + border_y) * j  # row (height)  (starts from bottom)
 
-        plot_mask(renderer, mask_data, affine, x_current, y_current,
-                            orientation=orientation, smoothing=SMOOTHING, brain_mask=brain_mask)
+        plot_mask(renderer, mask_data, affine, x_current, y_current, orientation=orientation, smoothing=SMOOTHING, brain_mask=brain_mask)
 
-        #Bundle label
+        # Bundle label
         text_offset_top = -50
         text_offset_side = -100
         position = (0 - int(X) + text_offset_side, y_current + text_offset_top, 50)
@@ -118,13 +116,10 @@ def plot_tracts(classes, bundle_segmentations, affine, out_dir, brain_mask=None)
         renderer.add(text_actor)
 
     renderer.reset_camera()
-    window.record(renderer, out_path=join(out_dir, "preview.png"),
-                  size=(WINDOW_SIZE[0], WINDOW_SIZE[1]), reset_camera=False, magnification=2)
+    window.record(renderer, out_path=join(out_dir, "preview.png"), size=(WINDOW_SIZE[0], WINDOW_SIZE[1]), reset_camera=False, magnification=2)
 
 
-def plot_tracts_matplotlib(classes, bundle_segmentations, background_img, out_dir,
-                           threshold=0.001, exp_type="tract_segmentation"):
-
+def plot_tracts_matplotlib(classes, bundle_segmentations, background_img, out_dir, threshold=0.001, exp_type="tract_segmentation"):
     def plot_single_tract(bg, data, orientation, bundle, exp_type):
         if orientation == "coronal":
             data = data.transpose(2, 0, 1, 3) if exp_type == "peak_regression" else data.transpose(2, 0, 1)
@@ -168,22 +163,20 @@ def plot_tracts_matplotlib(classes, bundle_segmentations, background_img, out_di
 
     if exp_type == "peak_regression":
         s = bundle_segmentations.shape
-        bundle_segmentations = bundle_segmentations.reshape([s[0], s[1], s[2], int(s[3]/3), 3])
+        bundle_segmentations = bundle_segmentations.reshape([s[0], s[1], s[2], int(s[3] / 3), 3])
         bundles = ["CST_right", "CST_s_right", "CA", "CC_1", "AF_left"]  # can only use bundles from part1
 
     aggregation = "max"
     cols = 4
     rows = math.ceil(len(bundles) / cols)
 
-    background_img = background_img[...,0]
+    background_img = background_img[..., 0]
 
     for j, bundle in enumerate(bundles):
         bun = bundle.lower()
-        if bun.startswith("ca") or bun.startswith("fx_") or bun.startswith("or_") or \
-                bun.startswith("cc_1") or bun.startswith("fma"):
+        if bun.startswith("ca") or bun.startswith("fx_") or bun.startswith("or_") or bun.startswith("cc_1") or bun.startswith("fma"):
             orientation = "axial"
-        elif bun.startswith("ifo_") or bun.startswith("icp_") or bun.startswith("cst_s_") or \
-                bun.startswith("af_"):
+        elif bun.startswith("ifo_") or bun.startswith("icp_") or bun.startswith("cst_s_") or bun.startswith("af_"):
             bundle = bundle.replace("_s", "")
             orientation = "sagittal"
         elif bun.startswith("cst_"):
@@ -197,7 +190,7 @@ def plot_tracts_matplotlib(classes, bundle_segmentations, background_img, out_di
         # mask_data[mask_data < threshold] = 0
         mask_data[mask_data < 0.001] = 0  # higher value better for preview, otherwise half of image just red
 
-        plt.subplot(rows, cols, j+1)
+        plt.subplot(rows, cols, j + 1)
         plt.axis("off")
         plot_single_tract(background_img, mask_data, orientation, bundle, exp_type=exp_type)
 
@@ -213,13 +206,19 @@ def plot_tracts_matplotlib(classes, bundle_segmentations, background_img, out_di
         file_name = "preview"
 
     plt.subplots_adjust(wspace=0, hspace=0)
-    plt.savefig(join(out_dir, file_name + ".png"), bbox_inches='tight', dpi=300)
+    plt.savefig(join(out_dir, file_name + ".png"), bbox_inches="tight", dpi=300)
 
 
-def create_exp_plot(metrics, path, exp_name, without_first_epochs=False,
-                    keys=["loss", "f1_macro"], types=["train", "validate"], selected_ax=["loss", "f1"],
-                    fig_name="metrics.png"):
-
+def create_exp_plot(
+    metrics,
+    path,
+    exp_name,
+    without_first_epochs=False,
+    keys=["loss", "f1_macro"],
+    types=["train", "validate"],
+    selected_ax=["loss", "f1"],
+    fig_name="metrics.png",
+):
     colors = ["r", "g", "b", "m"]
     markers = [":", "", "--"]
 
@@ -249,14 +248,14 @@ def create_exp_plot(metrics, path, exp_name, without_first_epochs=False,
     # does not properly work with ax.twinx()
     # fig.gca().set_position((.1, .3, .8, .6))  # [left, bottom, width, height]; between 0-1: where it should be in result
 
-    plt.grid(b=True, which='major', color='black', linestyle='-')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
+    plt.grid(visible=True, which="major", color="black", linestyle="-")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
 
     ax2 = ax.twinx()  # create second scale
     axes["f1"] = ax2
 
-    #shrink current axis by 5% to make room for legend next to it
+    # shrink current axis by 5% to make room for legend next to it
     box = axes["loss"].get_position()
     axes["loss"].set_position([box.x0, box.y0, box.width * 0.95, box.height])
     box2 = axes["f1"].get_position()
@@ -267,14 +266,12 @@ def create_exp_plot(metrics, path, exp_name, without_first_epochs=False,
         for idx, key in enumerate(keys):
             for jdx, type in enumerate(types):
                 name = key + "_" + type
-                plt_handle, = axes[selected_ax[idx]].plot(list(range(5, len(metrics[name]))),
-                                metrics[name][5:], colors[idx] + markers[jdx], label=name)
+                (plt_handle,) = axes[selected_ax[idx]].plot(
+                    list(range(5, len(metrics[name]))), metrics[name][5:], colors[idx] + markers[jdx], label=name
+                )
                 handles.append(plt_handle)
 
-        plt.legend(handles=handles,
-                   loc=2,
-                   borderaxespad=0.,
-                   bbox_to_anchor=(1.03, 1))
+        plt.legend(handles=handles, loc=2, borderaxespad=0.0, bbox_to_anchor=(1.03, 1))
 
         fig_name = fig_name
 
@@ -283,13 +280,10 @@ def create_exp_plot(metrics, path, exp_name, without_first_epochs=False,
         for idx, key in enumerate(keys):
             for jdx, type in enumerate(types):
                 name = key + "_" + type
-                plt_handle, = axes[selected_ax[idx]].plot(metrics[name], colors[idx] + markers[jdx], label=name)
+                (plt_handle,) = axes[selected_ax[idx]].plot(metrics[name], colors[idx] + markers[jdx], label=name)
                 handles.append(plt_handle)
 
-        plt.legend(handles=handles,
-                   loc=2,
-                   borderaxespad=0.,
-                   bbox_to_anchor=(1.03, 1))
+        plt.legend(handles=handles, loc=2, borderaxespad=0.0, bbox_to_anchor=(1.03, 1))
 
         fig_name = fig_name
 
@@ -303,8 +297,7 @@ def plot_result_trixi(trixi, x, y, probs, loss, f1, epoch_nr):
     import torch
 
     x_norm = (x - x.min()) / (x.max() - x.min() + 1e-7)  # for proper plotting
-    trixi.show_image_grid(torch.tensor(x_norm).float()[:5, 0:1, :, :], name="input batch",
-                          title="Input batch")  # all channels of one batch
+    trixi.show_image_grid(torch.tensor(x_norm).float()[:5, 0:1, :, :], name="input batch", title="Input batch")  # all channels of one batch
 
     probs_shaped = probs[:, 15:16, :, :]  # (bs, 1, x, y)
     probs_shaped_bin = (probs_shaped > 0.5).int()
@@ -338,8 +331,7 @@ def plot_result_trixi(trixi, x, y, probs, loss, f1, epoch_nr):
     trixi.show_value(value=float(np.mean(f1)), counter=epoch_nr, name="f1", tag="f1")
 
 
-def plot_bundles_with_metric(bundle_path, endings_path, brain_mask_path, bundle, metrics, output_path,
-                             tracking_format="tck", show_color_bar=True):
+def plot_bundles_with_metric(bundle_path, endings_path, brain_mask_path, bundle, metrics, output_path, tracking_format="tck", show_color_bar=True):
     import seaborn as sns  # import in function to avoid error if not installed (this is only needed in this function)
     from dipy.viz import actor, window
     from tractseg.libs import vtk_utils
@@ -382,6 +374,7 @@ def plot_bundles_with_metric(bundle_path, endings_path, brain_mask_path, bundle,
     # Load trackings
     if tracking_format == "trk_legacy":
         from nibabel import trackvis
+
         streams, hdr = trackvis.read(bundle_path)
         streamlines = [s[0] for s in streams]
     else:
@@ -399,8 +392,7 @@ def plot_bundles_with_metric(bundle_path, endings_path, brain_mask_path, bundle,
     if algorithm == "distance_map" or algorithm == "equal_dist":
         streamlines = fiber_utils.resample_fibers(streamlines, NR_SEGMENTS * ANTI_INTERPOL_MULT)
     elif algorithm == "cutting_plane":
-        streamlines = fiber_utils.resample_to_same_distance(streamlines, max_nr_points=NR_SEGMENTS,
-                                                            ANTI_INTERPOL_MULT=ANTI_INTERPOL_MULT)
+        streamlines = fiber_utils.resample_to_same_distance(streamlines, max_nr_points=NR_SEGMENTS, ANTI_INTERPOL_MULT=ANTI_INTERPOL_MULT)
 
     # Cut start and end by percentage
     # streamlines = FiberUtils.resample_fibers(streamlines, NR_SEGMENTS * ANTI_INTERPOL_MULT)
@@ -416,7 +408,7 @@ def plot_bundles_with_metric(bundle_path, endings_path, brain_mask_path, bundle,
 
     elif algorithm == "distance_map":
         metric = AveragePointwiseEuclideanMetric()
-        qb = QuickBundles(threshold=100., metric=metric)
+        qb = QuickBundles(threshold=100.0, metric=metric)
         clusters = qb.cluster(streamlines)
         centroids = Streamlines(clusters.centroids)
         _, segment_idxs = cKDTree(centroids.get_data(), 1, copy_data=True).query(streamlines, k=1)
@@ -424,7 +416,7 @@ def plot_bundles_with_metric(bundle_path, endings_path, brain_mask_path, bundle,
     elif algorithm == "cutting_plane":
         streamlines_resamp = fiber_utils.resample_fibers(streamlines, NR_SEGMENTS * ANTI_INTERPOL_MULT)
         metric = AveragePointwiseEuclideanMetric()
-        qb = QuickBundles(threshold=100., metric=metric)
+        qb = QuickBundles(threshold=100.0, metric=metric)
         clusters = qb.cluster(streamlines_resamp)
         centroid = Streamlines(clusters.centroids)[0]
         # index of the middle cluster
@@ -465,24 +457,17 @@ def plot_bundles_with_metric(bundle_path, endings_path, brain_mask_path, bundle,
 
     # plot brain mask
     mask = nib.load(brain_mask_path).get_fdata().astype(np.uint8)
-    cont_actor = vtk_utils.contour_from_roi_smooth(mask, affine=beginnings_img.affine, color=[.9, .9, .9], opacity=.2,
-                                                   smoothing=50)
+    cont_actor = vtk_utils.contour_from_roi_smooth(mask, affine=beginnings_img.affine, color=[0.9, 0.9, 0.9], opacity=0.2, smoothing=50)
     renderer.add(cont_actor)
 
     if show_color_bar:
-        lut_cmap = actor.colormap_lookup_table(scale_range=(metrics_min, metrics_max),
-                                               hue_range=(0.0, 0.0),
-                                               saturation_range=(0.0, 1.0))
+        lut_cmap = actor.colormap_lookup_table(scale_range=(metrics_min, metrics_max), hue_range=(0.0, 0.0), saturation_range=(0.0, 1.0))
         renderer.add(actor.scalar_bar(lut_cmap))
 
     if orientation == "sagittal":
-        renderer.set_camera(position=(-412.95, -34.38, 80.15),
-                            focal_point=(102.46, -16.96, -11.71),
-                            view_up=(0.1806, 0.0, 0.9835))
+        renderer.set_camera(position=(-412.95, -34.38, 80.15), focal_point=(102.46, -16.96, -11.71), view_up=(0.1806, 0.0, 0.9835))
     elif orientation == "coronal":
-        renderer.set_camera(position=(-48.63, 360.31, 98.37),
-                            focal_point=(-20.16, 92.89, 36.02),
-                            view_up=(-0.0047, -0.2275, 0.9737))
+        renderer.set_camera(position=(-48.63, 360.31, 98.37), focal_point=(-20.16, 92.89, 36.02), view_up=(-0.0047, -0.2275, 0.9737))
     elif orientation == "axial":
         pass
     else:
