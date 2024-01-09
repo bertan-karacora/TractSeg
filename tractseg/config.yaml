@@ -1,3 +1,4 @@
 PATH_CWD: "/home/lab1/TractSeg"
 PATH_DIR_EXP: "/home/lab1/TractSeg/out/experiments"
 PATH_DIR_WEIGHTS: "/home/lab1/TractSeg/tractseg/weights"
+NUM_CPUS: 12

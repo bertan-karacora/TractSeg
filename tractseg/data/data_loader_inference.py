@@ -64,10 +64,20 @@ class BatchGenerator2D_data_ordered_standalone(object):
 
         if config.NR_SLICES > 1:
             x, y = data_utils.sample_Xslices(
-                data, seg, slice_idxs, slice_direction=slice_direction, labels_type=exp_utils.get_correct_labels_type(), slice_window=config.NR_SLICES
+                data,
+                seg,
+                slice_idxs,
+                slice_direction=slice_direction,
+                labels_type=exp_utils.get_type_labels(config.TYPE_LABELS),
+                slice_window=config.NR_SLICES,
             )
         else:
-            x, y = data_utils.sample_slices(data, seg, slice_idxs, slice_direction=slice_direction, labels_type=exp_utils.get_correct_labels_type())
+            x, y = data_utils.sample_slices(
+                data, seg, slice_idxs, slice_direction=slice_direction, labels_type=exp_utils.get_type_labels(config.TYPE_LABELS)
+            )
+
+        x = x.astype(np.float32)
+        y = y.astype(np.float32)
 
         data_dict = {"data": x, "seg": y}  # (batch_size, channels, x, y, [z])  # (batch_size, channels, x, y, [z])
         self.global_idx = new_global_idx
@@ -137,8 +147,8 @@ class DataLoaderInference:
             exp_utils.print_verbose(config.VERBOSE, "Loading data from PREDICT_IMG input file")
             data = np.nan_to_num(self.data)
             # Use dummy mask in case we only want to predict on some data (where we do not have ground truth))
-            seg = np.zeros((config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.NR_OF_CLASSES)).astype(
-                exp_utils.get_correct_labels_type()
+            seg = np.zeros((config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], len(config.CLASSES) - 1)).astype(
+                exp_utils.get_type_labels(config.TYPE_LABELS)
             )
         elif self.subject is not None:
             if config.TYPE == "combined":

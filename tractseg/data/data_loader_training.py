@@ -9,37 +9,49 @@ from pathlib import Path
 from os.path import join
 import random
 
+import multiprocessing
 import numpy as np
 import nibabel as nib
 import nrrd
 
-from batchgenerators.transforms.resample_transforms import ResampleTransform
 from batchgenerators.transforms.resample_transforms import SimulateLowResolutionTransform
 from batchgenerators.transforms.noise_transforms import GaussianNoiseTransform
 from batchgenerators.transforms.noise_transforms import GaussianBlurTransform
 from batchgenerators.transforms.spatial_transforms import SpatialTransform
-from batchgenerators.transforms.spatial_transforms import ZoomTransform
 from batchgenerators.transforms.spatial_transforms import MirrorTransform
 from batchgenerators.transforms.utility_transforms import NumpyToTensor
 from batchgenerators.transforms.abstract_transforms import Compose
 from batchgenerators.dataloading.multi_threaded_augmenter import MultiThreadedAugmenter
 from batchgenerators.dataloading.data_loader import SlimDataLoaderBase
 from batchgenerators.augmentations.utils import pad_nd_image
-from batchgenerators.augmentations.utils import center_crop_2D_image_batched
 from batchgenerators.augmentations.crop_and_pad_augmentations import crop
-from batchgenerators.augmentations.spatial_transformations import augment_zoom
+
+import tractseg.config as config
+from tractseg.data.custom_transformations import ResampleTransformLegacy
+from tractseg.data.custom_transformations import FlipVectorAxisTransform
 
 # from batchgenerators.transforms.sample_normalization_transforms import ZeroMeanUnitVarianceTransform
 from tractseg.data.DLDABG_standalone import ZeroMeanUnitVarianceTransform as ZeroMeanUnitVarianceTransform_Standalone
-
-from tractseg.data.custom_transformations import ResampleTransformLegacy
-from tractseg.data.custom_transformations import FlipVectorAxisTransform
 from tractseg.data.spatial_transform_peaks import SpatialTransformPeaks
 from tractseg.data.spatial_transform_custom import SpatialTransformCustom
-import tractseg.config as config
 from tractseg.libs import data_utils
 from tractseg.libs import peak_utils
 from tractseg.libs import exp_utils
+
+
+def load_img(path_img):
+    if path_img.suffixes == [".nrrd"]:
+        # bonndit output: (4, r, x, y, z)
+        # TODO: Do this as preprocessing?
+        data_img, _ = nrrd.read(path_img)
+        data_img = data_img[1:].transpose(2, 3, 4, 1, 0)
+        data_img = data_img.reshape(*data_img.shape[:-2], -1)
+    elif path_img.suffixes == [".nii", ".gz"]:
+        data_img = nib.load(path_img).get_fdata()
+    else:
+        raise ValueError("Unsupported input file type.")
+
+    return data_img
 
 
 def load_training_data(subject):
@@ -53,33 +65,9 @@ def load_training_data(subject):
     Returns:
         data and labels as 3D array
     """
-
-    def load_img(path_img):
-        if path_img.suffixes == [".nrrd"]:
-            # bonndit output: (4, r, x, y, z)
-            # TODO: check. Also consider copying, since transpose does not change memory layout (-> optimize data locality)
-            data_img, _ = nrrd.read(path_img)
-            data_img = data_img[1:].transpose(2, 3, 4, 1, 0)
-            data_img = data_img.reshape(*data_img.shape[:-2], -1)
-        elif path_img.suffixes == [".nii", ".gz"]:
-            data_img = nib.load(path_img).get_fdata()
-        else:
-            raise ValueError("Unsupported input file type.")
-
-        return data_img
-
     path_subject = Path(config.PATH_DATA) / subject
     data = load_img(path_subject / config.DIR_FEATURES / config.FILENAME_FEATURES)
-
-    if "|" in config.FILENAME_LABELS:
-        parts = config.FILENAME_LABELS.split("|")
-        seg = []  # [4, x, y, z, 54]
-        for part in parts:
-            seg.append(load_img(path_subject / part))
-        seg = np.array(seg).transpose(1, 2, 3, 4, 0)
-        seg = seg.reshape(data.shape[:3] + (-1,))  # [x, y, z, 54*4]
-    else:
-        seg = load_img(path_subject / config.DIR_LABELS / config.FILENAME_LABELS)
+    seg = load_img(path_subject / config.DIR_LABELS / config.FILENAME_LABELS)
 
     return data, seg
 
@@ -96,17 +84,7 @@ class BatchGenerator2D_Nifti_random(SlimDataLoaderBase):
     """
 
     def __init__(self, *args, **kwargs):
-        super(self.__class__, self).__init__(*args, **kwargs)
-
-    def _zoom_x_and_y(self, x, y, zoom_factor):
-        # Very slow
-        x_new = []
-        y_new = []
-        for b in range(x.shape[0]):
-            x_tmp, y_tmp = augment_zoom(x[b], y[b], zoom_factor, order=3, order_seg=1, cval_seg=0)
-            x_new.append(x_tmp)
-            y_new.append(y_tmp)
-        return np.array(x_new), np.array(y_new)
+        super().__init__(*args, **kwargs)
 
     def generate_train_batch(self):
         subjects = self._data[0]
@@ -114,7 +92,6 @@ class BatchGenerator2D_Nifti_random(SlimDataLoaderBase):
 
         data, seg = load_training_data(subjects[subject_idx])
 
-        # Convert peaks to tensors if tensor model
         if config.NR_OF_GRADIENTS == 18 * config.NR_SLICES:
             data = peak_utils.peaks_to_tensors(data)
 
@@ -131,29 +108,18 @@ class BatchGenerator2D_Nifti_random(SlimDataLoaderBase):
                 seg,
                 slice_idxs,
                 slice_direction=slice_direction,
-                labels_type=exp_utils.get_correct_labels_type(),
+                labels_type=exp_utils.get_type_labels(config.TYPE_LABELS),
                 slice_window=config.NR_SLICES,
             )
         else:
-            x, y = data_utils.sample_slices(data, seg, slice_idxs, slice_direction=slice_direction, labels_type=exp_utils.get_correct_labels_type())
-
-        # Can be replaced by crop
-        # x = pad_nd_image(x, config.SHAPE_INPUT, mode='constant', kwargs={'constant_values': 0})
-        # y = pad_nd_image(y, config.SHAPE_INPUT, mode='constant', kwargs={'constant_values': 0})
-        # x = center_crop_2D_image_batched(x, config.SHAPE_INPUT)
-        # y = center_crop_2D_image_batched(y, config.SHAPE_INPUT)
-
-        # If want to convert e.g. 1.25mm (HCP) image to 2mm image (bb)
-        # x, y = self._zoom_x_and_y(x, y, 0.67)  # very slow -> try spatial_transform, should be fast
+            x, y = data_utils.sample_slices(data, seg, slice_idxs, slice_direction=slice_direction)
 
         if config.PAD_TO_SQUARE:
-            # Crop and pad to input size
-            x, y = crop(x, y, crop_size=tuple(config.SHAPE_INPUT))  # does not work with img with batches and channels
+            x, y = crop(x, y, crop_size=tuple(config.SHAPE_INPUT))
         else:
             # Works -> results as good?
-            # Will pad each axis to be multiple of 16. (Each sample can end up having different dimensions. Also x and y
-            # can be different)
-            # This is needed for Schizo dataset
+            # Will pad each axis to be multiple of 16. (Each sample can end up having different dimensions. Also x and y can be different)
+            # This is needed for the Schizo dataset.
             x = pad_nd_image(x, shape_must_be_divisible_by=(16, 16), mode="constant", kwargs={"constant_values": 0})
             y = pad_nd_image(y, shape_must_be_divisible_by=(16, 16), mode="constant", kwargs={"constant_values": 0})
 
@@ -161,9 +127,8 @@ class BatchGenerator2D_Nifti_random(SlimDataLoaderBase):
         x = x.astype(np.float32)
         y = y.astype(np.float32)
 
-        # possible optimization: sample slices from different patients and pad all to same size (size of biggest)
-
-        data_dict = {"data": x, "seg": y, "slice_dir": slice_direction}  # (batch_size, channels, x, y, [z])  # (batch_size, channels, x, y, [z])
+        # (batch_size, channels, x, y, [z])
+        data_dict = {"data": x, "seg": y, "slice_dir": slice_direction}
         return data_dict
 
 
@@ -177,7 +142,7 @@ class BatchGenerator2D_Npy_random(SlimDataLoaderBase):
     """
 
     def __init__(self, *args, **kwargs):
-        super(self.__class__, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def generate_train_batch(self):
         subjects = self._data[0]
@@ -199,23 +164,15 @@ class BatchGenerator2D_Npy_random(SlimDataLoaderBase):
 
         slice_idxs = np.random.choice(data.shape[0], self.batch_size, False, None)
         slice_direction = data_utils.slice_dir_to_int(config.TRAINING_SLICE_DIRECTION)
-        x, y = data_utils.sample_slices(data, seg, slice_idxs, slice_direction=slice_direction, labels_type=exp_utils.get_correct_labels_type())
+        x, y = data_utils.sample_slices(data, seg, slice_idxs, slice_direction=slice_direction)
 
-        data_dict = {"data": x, "seg": y}  # (batch_size, channels, x, y, [z])  # (batch_size, channels, x, y, [z])
+        # (batch_size, channels, x, y, [z])
+        data_dict = {"data": x, "seg": y}
         return data_dict
 
 
 class DataLoaderTraining:
-    def __init__(self):
-        pass
-
     def _augment_data(self, batch_generator, type=None):
-        if config.DATA_AUGMENTATION:
-            num_processes = 15  # 15 is a bit faster than 8 on cluster
-            # num_processes = multiprocessing.cpu_count()  # on cluster: gives all cores, not only assigned cores
-        else:
-            num_processes = 6
-
         tfs = []
 
         if config.NORMALIZE_DATA:
@@ -299,9 +256,14 @@ class DataLoaderTraining:
 
         tfs.append(NumpyToTensor(keys=["data", "seg"], cast_to="float"))
 
+        # Set num_processes rather low because otherwise threads get killed for some reason (RAM looks actually okay, no idea why this happens)
+        # This choice is based on the hard-coded value 15 processes that is used in the code as provided with the original paper by Wasserthal et al.
+        # In the paper they state that the used a 48-core Intel Xeon CPU, so let's set this to one third of the core number.
+        # num_processes = multiprocessing.cpu_count() // 3
+        num_processes = 6
         # num_cached_per_queue 1 or 2 does not really make a difference
         batch_gen = MultiThreadedAugmenter(
-            batch_generator, Compose(tfs), num_processes=num_processes, num_cached_per_queue=1, seeds=None, pin_memory=True
+            batch_generator, Compose(tfs), num_processes=num_processes, num_cached_per_queue=2, seeds=None, pin_memory=True
         )
         return batch_gen  # data: (batch_size, channels, x, y), seg: (batch_size, channels, x, y)
 
@@ -313,7 +275,6 @@ class DataLoaderTraining:
             batch_gen = BatchGenerator2D_Npy_random((data, seg), batch_size=batch_size)
         else:
             batch_gen = BatchGenerator2D_Nifti_random((data, seg), batch_size=batch_size)
-            # batch_gen = SlicesBatchGeneratorRandomNiftiImg_5slices((data, seg), batch_size=batch_size)
 
         batch_gen = self._augment_data(batch_gen, type=type)
 

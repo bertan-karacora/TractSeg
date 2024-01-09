@@ -19,7 +19,7 @@ THRESHOLD: 0.5 # Binary: 0.5, Regression: 0.01
 # Hyperparams
 MODEL: "UNet_Pytorch_DeepSup"
 SHAPE_INPUT: [144, 144]
-BATCH_SIZE: 47
+BATCH_SIZE: 13
 LEARNING_RATE: 0.001
 LR_SCHEDULE: True
 LR_SCHEDULE_MODE: "min" # min|max
@@ -37,10 +37,8 @@ BATCH_NORM: False
 WEIGHT_DECAY: 0
 USE_DROPOUT: True # slightly less overfitting (but max f1_validate maybe slightly worse (makes sense if less overfitting))
 DROPOUT_SAMPLING: False
-LOAD_WEIGHTS: False
 SAVE_WEIGHTS: True
 TYPE: "single_direction" # single_direction|combined
-CV_FOLD: 0
 OUTPUT_MULTIPLE_FILES: False
 RESET_LAST_LAYER: False
 UPSAMPLE_TYPE: "bilinear" # bilinear|nearest
@@ -80,11 +78,8 @@ DAUG_MIRROR: False
 DAUG_FLIP_PEAKS: False
 SPATIAL_TRANSFORM: "SpatialTransform" # SpatialTransform|SpatialTransformPeaks
 P_SAMP: 1.0
-DAUG_INFO: "-"
-INFO: "-"
 
 # Inference
 TRACTSEG_DIR: "tractseg_output"
 KEEP_INTERMEDIATE_FILES: False
 CSD_RESOLUTION: "LOW" # HIGH|LOW
-NR_CPUS: -1

@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from os.path import join
 import time
 import pickle
@@ -62,8 +58,6 @@ def train_model(model, data_loader):
             pass
         trixi = PytorchVisdomLogger(port=8080, auto_start=True)
 
-    exp_utils.print_and_save(config.PATH_EXP, socket.gethostname())
-
     epoch_times = []
     nr_of_updates = 0
 
@@ -75,8 +69,24 @@ def train_model(model, data_loader):
     batch_gen_train = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="train", subjects=config.SUBJECTS_TRAIN)
     batch_gen_val = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="validate", subjects=config.SUBJECTS_VALIDATE)
 
+    import torch
+
+    # Defining the profiler
+    prof = torch.profiler.profile(
+        activities=[torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA],
+        # schedule=torch.profiler.schedule(wait=1, warmup=1, active=1),
+        on_trace_ready=torch.profiler.tensorboard_trace_handler("./out"),
+        # record_shapes=True,
+        # profile_memory=True,
+        # with_stack=True,
+        # with_flops=True,
+        # with_modules=True
+    )
+    prof.start()
+
     for epoch_nr in range(config.NUM_EPOCHS):
         start_time = time.time()
+        prof.step()
 
         timings = defaultdict(lambda: 0)
         batch_nr = defaultdict(lambda: 0)
@@ -107,7 +117,7 @@ def train_model(model, data_loader):
                 batch_nr[type] += 1
 
                 x = batch["data"]  # (batch_size, nr_of_channels, x, y)
-                y = batch["seg"]  # (batch_size, nr_of_classes, x, y)
+                y = batch["seg"]  # (batch_size, len(config.CLASSES), x, y)
 
                 timings["data_preparation_time"] += time.time() - start_time_data_preparation
                 start_time_network = time.time()
@@ -146,7 +156,7 @@ def train_model(model, data_loader):
 
         ################################### Post Training tasks (each epoch) ###################################
 
-        if config.VALIDATE:
+        if config.VALIDATE and not config.TRAIN:
             metrics = metric_utils.normalize_last_element(metrics, batch_nr["validate"], type="validate")
             print("f1 macro validate: {}".format(round(metrics["f1_macro_validate"][0], 4)))
             return model
@@ -178,7 +188,7 @@ def train_model(model, data_loader):
         plot_utils.create_exp_plot(
             metrics,
             config.PATH_EXP,
-            config.EXP_NAME,
+            config.NAME_EXP,
             keys=["loss", "f1_macro"],
             types=["train", "validate"],
             selected_ax=["loss", "f1"],
@@ -187,7 +197,7 @@ def train_model(model, data_loader):
         plot_utils.create_exp_plot(
             metrics,
             config.PATH_EXP,
-            config.EXP_NAME,
+            config.NAME_EXP,
             without_first_epochs=True,
             keys=["loss", "f1_macro"],
             types=["train", "validate"],
@@ -198,7 +208,7 @@ def train_model(model, data_loader):
             plot_utils.create_exp_plot(
                 metrics,
                 config.PATH_EXP,
-                config.EXP_NAME,
+                config.NAME_EXP,
                 without_first_epochs=True,
                 keys=["loss", "angle_err"],
                 types=["train", "validate"],
@@ -221,8 +231,8 @@ def train_model(model, data_loader):
         if epoch_nr < config.NUM_EPOCHS - 1:
             metrics = metric_utils.add_empty_element(metrics)
 
-    with open(join(config.PATH_EXP, "config_exp.yaml"), "a") as f:
-        f.write("\n\nAverage Epoch time: {}s".format(sum(epoch_times) / float(len(epoch_times))))
+    prof.stop()
+    print("Average Epoch time: {}s".format(sum(epoch_times) / float(len(epoch_times))))
 
 
 def predict_img(model, data_loader, probs=False, scale_to_world_shape=True, only_prediction=False, batch_size=1, unit_test=False):
@@ -251,13 +261,13 @@ def predict_img(model, data_loader, probs=False, scale_to_world_shape=True, only
             elif config.SLICE_DIRECTION == "z":
                 layers = layers.transpose(1, 2, 0, 3)
 
-        if scale_to_world_shape:
-            layers = dataset_specific_utils.scale_input_to_original_shape(layers, config.DATASET, config.RESOLUTION)
+        # if scale_to_world_shape:
+        #     layers = dataset_specific_utils.scale_input_to_original_shape(layers, config.DATASET, config.RESOLUTION)
 
         assert layers.dtype == np.float32
         return layers
 
-    img_shape = [config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.NR_OF_CLASSES]
+    img_shape = [config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], len(config.CLASSES)]
     layers_seg = np.empty(img_shape).astype(np.float32)
     layers_y = None if only_prediction else np.empty(img_shape).astype(np.float32)
 
@@ -296,7 +306,7 @@ def predict_img(model, data_loader, probs=False, scale_to_world_shape=True, only
         y = y.numpy()
 
         if not only_prediction:
-            y = y.astype(exp_utils.get_correct_labels_type())
+            y = y.astype(exp_utils.get_type_labels(config.TYPE_LABELS))
             if len(config.SHAPE_INPUT) == 2:
                 y = y.transpose(0, 2, 3, 1)  # (bs, x, y, nr_classes)
             else:
@@ -350,7 +360,7 @@ def test_whole_subject(model, subjects, type):
     metrics_bundles = defaultdict(lambda: [0])
 
     for subject in subjects:
-        print("{} subject {}".format(type, subject))
+        print(f"{type} subject {subject}")
         start_time = time.time()
 
         data_loader = DataLoaderInference(subject=subject)
@@ -362,19 +372,17 @@ def test_whole_subject(model, subjects, type):
 
         if config.TYPE_EXP == "peak_regression":
             f1 = metric_utils.calc_peak_length_dice(
-                config.CLASSES, img_probs, img_y, max_angle_error=config.PEAK_DICE_THR, max_length_error=config.PEAK_DICE_LEN_THR
+                config.CLASSSET, img_probs, img_y, max_angle_error=config.PEAK_DICE_THR, max_length_error=config.PEAK_DICE_LEN_THR
             )
             peak_f1_mean = np.array([s for s in f1.values()]).mean()  # if f1 for multiple bundles
             metrics = metric_utils.calculate_metrics(metrics, None, None, 0, f1=peak_f1_mean, type=type, threshold=config.THRESHOLD)
-            metrics_bundles = metric_utils.calculate_metrics_each_bundle(
-                metrics_bundles, None, None, dataset_specific_utils.get_bundle_names(config.CLASSES)[1:], f1, threshold=config.THRESHOLD
-            )
+            metrics_bundles = metric_utils.calculate_metrics_each_bundle(metrics_bundles, None, None, config.CLASSES, f1, threshold=config.THRESHOLD)
         else:
             img_probs = np.reshape(img_probs, (-1, img_probs.shape[-1]))  # Flatten all dims except nr_classes dim
             img_y = np.reshape(img_y, (-1, img_y.shape[-1]))
             metrics = metric_utils.calculate_metrics(metrics, img_y, img_probs, 0, type=type, threshold=config.THRESHOLD)
             metrics_bundles = metric_utils.calculate_metrics_each_bundle(
-                metrics_bundles, img_y, img_probs, dataset_specific_utils.get_bundle_names(config.CLASSES)[1:], threshold=config.THRESHOLD
+                metrics_bundles, img_y, img_probs, config.CLASSES, threshold=config.THRESHOLD
             )
 
     metrics = metric_utils.normalize_last_element(metrics, len(subjects), type=type)
@@ -387,8 +395,8 @@ def test_whole_subject(model, subjects, type):
 
     with open(join(config.PATH_EXP, "score_" + type + "-set.txt"), "w") as f:
         pprint(metrics, f)
-        f.write("\n\nWeights: {}\n".format(config.PATH_WEIGHTS))
-        f.write("type: {}\n\n".format(type))
+        f.write(f"Weights: {config.PATH_WEIGHTS}")
+        f.write("Type: {type}")
         pprint(metrics_bundles, f)
     pickle.dump(metrics, open(join(config.PATH_EXP, "score_" + type + ".pkl"), "wb"))
     return metrics

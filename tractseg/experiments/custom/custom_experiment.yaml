@@ -7,26 +7,26 @@ PATH_DATA: "/data/HCP"
 DIR_FEATURES: "fodf_low_rank"
 FILENAME_FEATURES: "fodf_approx_rank_3_cropped.nrrd"
 DIR_LABELS: "bundle_masks"
-LABELSET: "bundles_all72"
+CLASSSET: "bundles_all72"
 FILENAME_LABELS: "bundle_masks_cropped.nii.gz"
 
 # TODO: Can be inferred from headers (and experiment type)?
 NR_OF_GRADIENTS: 9
 RESOLUTION: "1.25mm" # 1.25mm|2.5mm
-LABELS_TYPE: "int"
+TYPE_LABELS: "int"
 THRESHOLD: 0.5 # Binary: 0.5, Regression: 0.01
 
 # Hyperparams
 MODEL: "UNet_Pytorch_DeepSup"
 SHAPE_INPUT: [144, 144]
-BATCH_SIZE: 47
+BATCH_SIZE: 30
 LEARNING_RATE: 0.001
 LR_SCHEDULE: True
 LR_SCHEDULE_MODE: "min" # min|max
 LR_SCHEDULE_PATIENCE: 20
 UNET_NR_FILT: 64
 EPOCH_MULTIPLIER: 1 # 2D: 1, 3D: 12 for lowRes, 3 for highRes
-NUM_EPOCHS: 1
+NUM_EPOCHS: 250
 SLICE_DIRECTION: "y" # x|y|z  ("combined" needs z)
 TRAINING_SLICE_DIRECTION: "xyz" # y|xyz
 LOSS_FUNCTION: "default" # default|soft_batch_dice
@@ -37,10 +37,8 @@ BATCH_NORM: False
 WEIGHT_DECAY: 0
 USE_DROPOUT: True # slightly less overfitting (but max f1_validate maybe slightly worse (makes sense if less overfitting))
 DROPOUT_SAMPLING: False
-LOAD_WEIGHTS: False
 SAVE_WEIGHTS: True
 TYPE: "single_direction" # single_direction|combined
-CV_FOLD: 0
 OUTPUT_MULTIPLE_FILES: False
 RESET_LAST_LAYER: False
 UPSAMPLE_TYPE: "bilinear" # bilinear|nearest
@@ -53,7 +51,7 @@ FLIP_OUTPUT_PEAKS: False # flip peaks along z axis to make them compatible with 
 USE_VISLOGGER: False
 SEG_INPUT: "Peaks" # Gradients|Peaks
 NR_SLICES: 1
-PRINT_FREQ: 20
+PRINT_FREQ: 30
 NORMALIZE_DATA: True
 NORMALIZE_PER_CHANNEL: False
 BEST_EPOCH: 0
@@ -80,11 +78,8 @@ DAUG_MIRROR: False
 DAUG_FLIP_PEAKS: False
 SPATIAL_TRANSFORM: "SpatialTransform" # SpatialTransform|SpatialTransformPeaks
 P_SAMP: 1.0
-DAUG_INFO: "-"
-INFO: "-"
 
 # Inference
 TRACTSEG_DIR: "tractseg_output"
 KEEP_INTERMEDIATE_FILES: False
 CSD_RESOLUTION: "LOW" # HIGH|LOW
-NR_CPUS: -1

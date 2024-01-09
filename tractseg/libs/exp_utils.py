@@ -9,6 +9,12 @@ import numpy as np
 import tractseg.config as config
 
 
+MAPPING_TYPE_LABELS = {
+    "int": np.uint8,
+    "float": np.float32,
+}
+
+
 def create_dir_exp(name_exp):
     """
     Create a new experiment folder. If it already exists, create new one with increasing number at the end.
@@ -46,7 +52,7 @@ def make_dir(directory):
 
 
 def get_best_weights_path():
-    path = Path(config.PATH_EXP).glob("weights_best_ep*.npz")[0]
+    path = list(Path(config.PATH_EXP).glob("best_weights_ep*.npz"))[0].as_posix()
     return path
 
 
@@ -118,17 +124,12 @@ def print_verbose(verbose, text):
         print(text)
 
 
-def get_correct_labels_type():
-    mapping_labels_type = {
-        "int": np.int16,
-        "float": np.float32,
-    }
-
-    if config.LABELS_TYPE in mapping_labels_type:
-        label_type = mapping_labels_type[config.LABELS_TYPE]
+def get_type_labels(str_type):
+    if str_type in MAPPING_TYPE_LABELS:
+        type_labels = MAPPING_TYPE_LABELS[str_type]
     else:
-        raise ValueError(f"ERROR: config.labels_type not recognized: {config.LABELS_TYPE}")
-    return label_type
+        raise ValueError(f"ERROR: Type of labels not recognized: {str_type}")
+    return type_labels
 
 
 def get_manual_exp_name_peaks(manual_exp_name, part):
