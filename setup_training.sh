@@ -3,11 +3,7 @@
 dir_data=data/HCP
 ids_subject=(599469 599671 601127 613538 620434 622236 623844 627549 638049 644044 645551 654754 665254 672756 673455 677968 679568 680957 683256 685058 687163 690152 695768 702133 704238 705341 709551 715041 715647 729254 729557 732243 734045 742549 748258 748662 749361 751348 753251 756055 759869 761957 765056 770352 771354 779370 782561 784565 786569 789373 792564 792766 802844 814649 816653 826353 826454 833148 833249 837560 837964 845458 849971 856766 857263 859671 861456 865363 871762 871964 872158 872764 877168 877269 887373 889579 894673 896778 896879 898176 899885 901038 901139 901442 904044 907656 910241 912447 917255 922854 930449 932554 951457 957974 958976 959574 965367 965771 978578 979984 983773 984472 987983 991267 992774)
 
-# dir_data=data/test
-# ids_subject=(599671 601127)
-
 activate_python_venv() {
-    python3.9 -m venv .venv
     source .venv/bin/activate
 }
 
@@ -31,7 +27,6 @@ download_tracts() {
     for id_subject in ${ids_subject[@]}; do
         mv $dir_tracts/$id_subject/tracts $dir_data/$id_subject/tracts
     done
-    wait
 
     rm -rf $dir_tracts
 
@@ -92,7 +87,10 @@ concat() {
 extract_fods() {
     echo "Extracting fODs..."
 
+    num_processes=2
     for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
         echo "Extracting dtivols for subject $id_subject."
 
         dir_subject=$dir_data/$id_subject
@@ -109,7 +107,10 @@ extract_fods() {
     done
     wait
 
+    num_processes=6
     for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
         echo "Performing dtifit for subject $id_subject."
 
         dir_subject=$dir_data/$id_subject
@@ -125,7 +126,10 @@ extract_fods() {
     done
     wait
 
+    num_processes=6
     for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
         echo "Segmenting tissue types for subject $id_subject."
 
         dir_subject=$dir_data/$id_subject
@@ -134,7 +138,7 @@ extract_fods() {
 
         5ttgen \
             fsl \
-            $dir_out/T1w_acpc_dc_restore_1.25.nii.gz \
+            $dir_subject/T1w_acpc_dc_restore_1.25.nii.gz \
             $dir_out/fast_first.nii.gz \
             -nocrop &
     done
@@ -151,6 +155,10 @@ extract_fods() {
         ln $dir_subject/Diffusion/bvals $dir_out/bvals
         ln $dir_subject/Diffusion/data.nii.gz $dir_out/data.nii.gz
         ln $dir_subject/Diffusion/nodif_brain_mask.nii.gz $dir_out/mask.nii.gz
+        ln $dir_subject/Diffusion/nodif_brain_mask.nii.gz $dir_out/nodif_brain_mask.nii.gz
+        ln $dir_subject/dti/dti_FA.nii.gz $dir_out/dti_FA.nii.gz
+        ln $dir_subject/dti/dti_V1.nii.gz $dir_out/dti_V1.nii.gz
+        ln $dir_subject/5tt/fast_first.nii.gz $dir_out/fast_first.nii.gz
 
         mtdeconv \
             -o $dir_out \
@@ -158,7 +166,16 @@ extract_fods() {
             -k rank1 \
             -r 4 \
             -C hpsd \
-            -i $dir_out &
+            $dir_out
+
+        rm $dir_out/bvecs
+        rm $dir_out/bvals
+        rm $dir_out/data.nii.gz
+        rm $dir_out/mask.nii.gz
+        rm $dir_out/nodif_brain_mask.nii.gz
+        rm $dir_out/dti_FA.nii.gz
+        rm $dir_out/dti_V1.nii.gz
+        rm $dir_out/fast_first.nii.gz
     done
     wait
 
@@ -191,7 +208,7 @@ extract_low_rank_approx() {
 }
 
 extract_peaks() {
-    echo "Extracting fODs..."
+    echo "Extracting peaks from fODs..."
 
     for id_subject in ${ids_subject[@]}; do
         echo "Generating responses for subject $id_subject."
@@ -207,9 +224,8 @@ extract_peaks() {
             $dir_out/RF_GM_DHol.txt \
             $dir_out/RF_CSF_DHol.txt \
             -fslgrad $dir_subject/Diffusion/bvecs $dir_subject/Diffusion/bvals \
-            -mask $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
+            -mask $dir_subject/Diffusion/nodif_brain_mask.nii.gz
     done
-    wait
 
     for id_subject in ${ids_subject[@]}; do
         echo "Generating fodfs for subject $id_subject."
@@ -228,9 +244,8 @@ extract_peaks() {
             $dir_subject/response/RF_CSF_DHol.txt \
             $dir_out/CSF_FODs.nii.gz \
             -fslgrad $dir_subject/Diffusion/bvecs $dir_subject/Diffusion/bvals \
-            -mask $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
+            -mask $dir_subject/Diffusion/nodif_brain_mask.nii.gz
     done
-    wait
 
     for id_subject in ${ids_subject[@]}; do
         echo "Extracting peaks for subject $id_subject."
@@ -240,11 +255,10 @@ extract_peaks() {
         mkdir -p $dir_out
 
         sh2peaks \
-            $dir_data/$id_subject/fodfs/WM_FODs.nii.gz \
+            $dir_subject/fodfs/WM_FODs.nii.gz \
             $dir_out/peaks.nii.gz \
-            -num 3 &
+            -num 3
     done
-    wait
 
     echo "Extracting peaks from fODs finished."
 }
@@ -258,8 +272,8 @@ convert() {
         dir_subject=$dir_data/$id_subject
 
         bonndit2mrtrix \
-            -i $dir_subject/mtdeconv/ankele/rank-2.nrrd \
-            -o $dir_subject/mtdeconv/ankele/rank-2.nii.gz &
+            -i $dir_subject/fodf_low_rank/fodf_approx_rank_3.nrrd \
+            -o $dir_subject/fodf_low_rank/fodf_approx_rank_3.nii.gz &
     done
     wait
 
@@ -298,22 +312,24 @@ crop_union() {
 
     python tractseg/utils/crop_union.py \
         --config_exp custom_experiment.yaml \
-        --ref mtdeconv/wmvolume.nrrd
+        --ref Diffusion/nodif_brain_mask.nii.gz \
+        --spatial_channels_last
 
     echo "Cropping features and tracts finished."
 }
 
 main() {
-    # activate_python_venv
-    # install_bonndit
-    # install_batchgenerators
+    activate_python_venv
+    install_bonndit
+    install_batchgenerators
 
-    # download_tracts
-    # binarize_tracts
-    # concat
+    download_tracts
+    binarize_tracts
+    concat
 
-    # extract_fods
-    # extract_low_rank_approx
+    extract_fods
+    extract_low_rank_approx
+    extract_peaks
 
     crop_union
 }
