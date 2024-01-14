@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import glob
 from os.path import join
@@ -13,14 +9,6 @@ from torch.optim import Adamax
 from torch.optim import Adam
 import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn.functional as F
-
-try:
-    from apex import amp
-
-    APEX_AVAILABLE = True
-except ImportError:
-    APEX_AVAILABLE = False
-    pass
 
 import tractseg.config as config
 from tractseg.libs import pytorch_utils
@@ -36,13 +24,6 @@ class BaseModel:
 
         # if config.NUM_CPUS > 0:
         #     torch.set_num_threads(config.NUM_CPUS)
-
-        if config.SEG_INPUT == "Peaks" and config.TYPE == "single_direction":
-            NR_OF_GRADIENTS = config.NR_OF_GRADIENTS
-        elif config.SEG_INPUT == "Peaks" and config.TYPE == "combined":
-            config.NR_OF_GRADIENTS = 3 * len(config.CLASSES)
-        else:
-            config.NR_OF_GRADIENTS = 33
 
         if config.LOSS_FUNCTION == "soft_sample_dice":
             self.criterion = pytorch_utils.soft_sample_dice
@@ -63,7 +44,7 @@ class BaseModel:
 
         NetworkClass = getattr(importlib.import_module("tractseg.models." + config.MODEL.lower()), config.MODEL)
         self.net = NetworkClass(
-            n_input_channels=NR_OF_GRADIENTS,
+            n_input_channels=config.NR_OF_GRADIENTS,
             n_classes=len(config.CLASSES),
             n_filt=config.UNET_NR_FILT,
             batchnorm=config.BATCH_NORM,
@@ -87,21 +68,10 @@ class BaseModel:
         else:
             raise ValueError("Optimizer not defined")
 
-        if APEX_AVAILABLE and config.FP16:
-            # Use O0 to disable fp16 (might be a little faster on TitanX)
-            self.net, self.optimizer = amp.initialize(self.net, self.optimizer, verbosity=0, opt_level="O1")
-            if not inference:
-                print("INFO: Using fp16 training")
-        else:
-            if not inference:
-                print("INFO: Did not find APEX, defaulting to fp32 training")
+        self.scaler = torch.cuda.amp.GradScaler(enabled=config.FP16)
 
         if config.LR_SCHEDULE:
             self.scheduler = lr_scheduler.ReduceLROnPlateau(self.optimizer, mode=config.LR_SCHEDULE_MODE, patience=config.LR_SCHEDULE_PATIENCE)
-
-        if config.LOAD_WEIGHTS:
-            exp_utils.print_verbose(config.VERBOSE, "Loading weights ... ({})".format(config.PATH_WEIGHTS))
-            self.load_model(config.PATH_WEIGHTS)
 
         # Reset weights of last layer for transfer learning
         # if config.RESET_LAST_LAYER:
@@ -114,34 +84,33 @@ class BaseModel:
 
         self.net.train()
         self.optimizer.zero_grad()
-        outputs = self.net(X)  # (bs, classes, x, y)
+
         angle_err = None
+        with torch.amp.autocast(device_type="cuda" if torch.cuda.is_available() else "cpu", dtype=torch.float16, enabled=config.FP16):
+            outputs = self.net(X)  # (bs, classes, x, y)
 
-        if weight_factor is not None:
-            if len(y.shape) == 4:  # 2D
-                weights = torch.ones((config.BATCH_SIZE, len(config.CLASSES), y.shape[2], y.shape[3])).cuda()
-            else:  # 3D
-                weights = torch.ones((config.BATCH_SIZE, len(config.CLASSES), y.shape[2], y.shape[3], y.shape[4])).cuda()
-            bundle_mask = y > 0
-            weights[bundle_mask.data] *= weight_factor  # 10
+            if weight_factor is not None:
+                if len(y.shape) == 4:  # 2D
+                    weights = torch.ones((config.BATCH_SIZE, len(config.CLASSES), y.shape[2], y.shape[3])).cuda()
+                else:  # 3D
+                    weights = torch.ones((config.BATCH_SIZE, len(config.CLASSES), y.shape[2], y.shape[3], y.shape[4])).cuda()
+                bundle_mask = y > 0
+                weights[bundle_mask.data] *= weight_factor  # 10
 
-            if config.TYPE_EXP == "peak_regression":
-                loss, angle_err = self.criterion(outputs, y, weights)
+                if config.TYPE_EXP == "peak_regression":
+                    loss, angle_err = self.criterion(outputs, y, weights)
+                else:
+                    loss = nn.BCEWithLogitsLoss(weight=weights)(outputs, y)
             else:
-                loss = nn.BCEWithLogitsLoss(weight=weights)(outputs, y)
-        else:
-            if config.LOSS_FUNCTION == "soft_sample_dice" or config.LOSS_FUNCTION == "soft_batch_dice":
-                loss = self.criterion(F.sigmoid(outputs), y)
-                # loss = criterion(F.sigmoid(outputs), y) + nn.BCEWithLogitsLoss()(outputs, y)  # combined loss
-            else:
-                loss = self.criterion(outputs, y)
+                if config.LOSS_FUNCTION == "soft_sample_dice" or config.LOSS_FUNCTION == "soft_batch_dice":
+                    loss = self.criterion(F.sigmoid(outputs), y)
+                    # loss = criterion(F.sigmoid(outputs), y) + nn.BCEWithLogitsLoss()(outputs, y)  # combined loss
+                else:
+                    loss = self.criterion(outputs, y)
 
-        if APEX_AVAILABLE and config.FP16:
-            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                scaled_loss.backward()
-        else:
-            loss.backward()
-        self.optimizer.step()
+        self.scaler.scale(loss).backward()
+        self.scaler.step(self.optimizer)
+        self.scaler.update()
 
         if config.TYPE_EXP == "peak_regression":
             f1 = metric_utils.calc_peak_length_dice_pytorch(
@@ -177,9 +146,10 @@ class BaseModel:
             self.net.train()
         else:
             self.net.train(False)
-        outputs = self.net(X)
-        angle_err = None
 
+        outputs = self.net(X)
+
+        angle_err = None
         if weight_factor is not None:
             if len(y.shape) == 4:  # 2D
                 weights = torch.ones((config.BATCH_SIZE, len(config.CLASSES), y.shape[2], y.shape[3])).cuda()
