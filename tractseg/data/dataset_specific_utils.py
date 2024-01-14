@@ -1,6 +1,5 @@
 import numpy as np
 
-import tractseg.config as config
 from tractseg.data import classsets, subjectsets
 from tractseg.libs import img_utils
 
@@ -15,7 +14,7 @@ def get_classes(classset):
     return classes
 
 
-def get_cvfold(fold):
+def get_cvfold(dataset, fold):
     # 5 fold CV ok (score only 1%-point worse than 10 folds (80 vs 60 train subjects) (10 Fold CV impractical!)
     num_folds = 5
     num_folds_train, num_folds_val, num_folds_test = 3, 1, 1
@@ -24,28 +23,14 @@ def get_cvfold(fold):
     validate = [(fold + num_folds_train + i) % num_folds for i in range(num_folds_val)]
     test = [(fold + num_folds_train + num_folds_val + i) % num_folds for i in range(num_folds_test)]
 
-    s = get_subjects(config.DATASET)
+    subjects = get_subjects(dataset)
     size_chunk = 21
-    chunks_s = np.asarray([s[i : i + size_chunk] for i in range(0, len(s), size_chunk)])
+    chunks = np.array([subjects[i : i + size_chunk] for i in range(0, len(subjects), size_chunk)])
 
-    s_train = list(chunks_s[train].flatten())
-    s_val = list(chunks_s[validate].flatten())
-    s_test = list(chunks_s[test].flatten())
-    return s_train, s_val, s_test
-
-
-def scale_input_to_unet_shape(img4d):
-    # HCP 1.25mm
-    # (145,174,145)
-    return img4d[1:, 15:159, 1:]  # (144,144,144)
-
-
-def scale_input_to_original_shape(img4d):
-    # HCP 1.25mm
-    # (144,144,144)
-    img_padded = img_utils.pad_4d_image_left(img4d, np.array([1, 15, 1, 0]), [146, 174, 146, img4d.shape[3]], pad_value=0)
-    img_padded = img_padded[:-1, :, :-1, :]  # (145, 174, 145, none)
-    return img_padded
+    subjects_train = chunks[train].flatten().tolist()
+    subjects_val = chunks[validate].flatten().tolist()
+    subjects_test = chunks[test].flatten().tolist()
+    return subjects_train, subjects_val, subjects_test
 
 
 def get_optimal_orientation_for_bundle(bundle):
