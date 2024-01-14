@@ -1,21 +1,18 @@
 from os.path import join
 import time
 import pickle
-import socket
 import datetime
 from collections import defaultdict
 
 import numpy as np
 from tqdm import tqdm
 from pprint import pprint
-import nibabel as nib
 
 import tractseg.config as config
 from tractseg.libs import exp_utils
 from tractseg.libs import metric_utils
 from tractseg.libs import plot_utils
 from tractseg.data.data_loader_inference import DataLoaderInference
-from tractseg.data import dataset_specific_utils
 
 
 def _get_weights_for_this_epoch(epoch_nr):
@@ -52,11 +49,9 @@ def _update_metrics(calc_f1, TYPE_EXP, metric_types, metrics, metr_batch, type):
 
 def train_model(model, data_loader):
     if config.USE_VISLOGGER:
-        try:
-            from trixi.logger.visdom import PytorchVisdomLogger
-        except ImportError:
-            pass
-        trixi = PytorchVisdomLogger(port=8080, auto_start=True)
+        from torch.utils.tensorboard import SummaryWriter
+
+        writer = SummaryWriter(config.PATH_EXP)
 
     epoch_times = []
     nr_of_updates = 0
@@ -69,24 +64,8 @@ def train_model(model, data_loader):
     batch_gen_train = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="train", subjects=config.SUBJECTS_TRAIN)
     batch_gen_val = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="validate", subjects=config.SUBJECTS_VALIDATE)
 
-    import torch
-
-    # Defining the profiler
-    prof = torch.profiler.profile(
-        activities=[torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA],
-        # schedule=torch.profiler.schedule(wait=1, warmup=1, active=1),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler("./out"),
-        # record_shapes=True,
-        # profile_memory=True,
-        # with_stack=True,
-        # with_flops=True,
-        # with_modules=True
-    )
-    prof.start()
-
     for epoch_nr in range(config.NUM_EPOCHS):
         start_time = time.time()
-        prof.step()
 
         timings = defaultdict(lambda: 0)
         batch_nr = defaultdict(lambda: 0)
@@ -126,8 +105,6 @@ def train_model(model, data_loader):
                     probs, metr_batch = model.train(x, y, weight_factor=weight_factor)
                 elif type == "validate":
                     probs, metr_batch = model.test(x, y, weight_factor=weight_factor)
-                elif type == "test":
-                    probs, metr_batch = model.test(x, y, weight_factor=weight_factor)
                 timings["network_time"] += time.time() - start_time_network
 
                 start_time_metrics = time.time()
@@ -152,14 +129,23 @@ def train_model(model, data_loader):
                     print_loss = []
 
                 if config.USE_VISLOGGER:
-                    plot_utils.plot_result_trixi(trixi, x, y, probs, metr_batch["loss"], metr_batch["f1_macro"], epoch_nr)
+                    writer.add_scalar(f"Loss/{type}", metr_batch["loss"], epoch_nr * nr_batches + nr_batch)
+                    writer.add_scalar(f"F1/{type}", np.mean(metr_batch["f1_macro"]), epoch_nr * nr_batches + nr_batch)
+
+                    if i == nr_batches - 1:
+                        num_images = 5
+                        x_norm = (x - x.min()) / (x.max() - x.min() + 1e-7)
+                        writer.add_images(f"Inputs/{type}", x_norm[:num_images, :3, :, :], epoch_nr)
+                        writer.add_images(f"Predictions/{type}", probs[:num_images, 15:16, :, :], epoch_nr)
+
+                        # Bundle: CST, GREEN: GT; RED: prediction (FP); YELLOW: prediction (TP)
+                        combined = np.zeros((num_images, 3, y.shape[2], y.shape[3]))
+                        combined[:, 0, :, :] = np.where(probs[:num_images, 15, :, :] > 0.5, 1, 0)  # Red
+                        combined[:, 1, :, :] = y[:num_images, 15, :, :]  # Green
+                        writer.add_images(f"Combined/{type}", combined, epoch_nr)
+                    writer.flush()
 
         ################################### Post Training tasks (each epoch) ###################################
-
-        if config.VALIDATE and not config.TRAIN:
-            metrics = metric_utils.normalize_last_element(metrics, batch_nr["validate"], type="validate")
-            print("f1 macro validate: {}".format(round(metrics["f1_macro_validate"][0], 4)))
-            return model
 
         # Average loss per batch over entire epoch
         metrics = metric_utils.normalize_last_element(metrics, batch_nr["train"], type="train")
@@ -231,7 +217,13 @@ def train_model(model, data_loader):
         if epoch_nr < config.NUM_EPOCHS - 1:
             metrics = metric_utils.add_empty_element(metrics)
 
-    prof.stop()
+        if config.USE_VISLOGGER:
+            writer.add_scalar("Time total", epoch_time, epoch_nr)
+            writer.add_scalar("Time network", timings["network_time"], epoch_nr)
+
+    if config.USE_VISLOGGER:
+        writer.close()
+
     print("Average Epoch time: {}s".format(sum(epoch_times) / float(len(epoch_times))))
 
 
@@ -395,8 +387,6 @@ def test_whole_subject(model, subjects, type):
 
     with open(join(config.PATH_EXP, "score_" + type + "-set.txt"), "w") as f:
         pprint(metrics, f)
-        f.write(f"Weights: {config.PATH_WEIGHTS}")
-        f.write("Type: {type}")
         pprint(metrics_bundles, f)
     pickle.dump(metrics, open(join(config.PATH_EXP, "score_" + type + ".pkl"), "wb"))
     return metrics
