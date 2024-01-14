@@ -1,49 +1,42 @@
-from pathlib import Path
 import os
-import re
-import sys
 from os.path import join
 
 import numpy as np
 
-import tractseg.config as config
-
 
 MAPPING_TYPE_LABELS = {
-    "int": np.uint8,
+    "int": np.int16,
     "float": np.float32,
 }
 
 
-def create_dir_exp(name_exp):
+def load_weights(model, path):
+    print(f"Loading weights from {path}.")
+    model.load_model(path)
+
+    return model
+
+
+def mkdir_exp(path, use_existing=False):
     """
     Create a new experiment folder. If it already exists, create new one with increasing number at the end.
     If not training model (only predicting): Use existing folder
     """
-    dir = join(config.PATH_DIR_EXP, name_exp)
 
-    if not config.TRAIN:
-        if os.path.exists(dir):
-            return dir
-        else:
-            sys.exit("Testing target directory does not exist!")
+    if use_existing:
+        if not path.is_dir():
+            raise ValueError(f"{path} directory does not exist.")
     else:
-        for i in range(40):
-            if os.path.exists(dir):
-                tailing_numbers = re.findall("x([0-9]+)$", name_exp)  # find tailing numbers that start with a x
-                if len(tailing_numbers) > 0:
-                    num = int(tailing_numbers[0])
-                    if num < 10:
-                        name_exp = name_exp[:-1] + str(num + 1)
-                    else:
-                        name_exp = name_exp[:-2] + str(num + 1)
-                else:
-                    name_exp += "_x2"
-                dir = join(config.PATH_DIR_EXP, name_exp)
-            else:
-                os.makedirs(dir)
-                break
-        return dir
+        if path.is_dir():
+            name_exp = path.name
+            counter = 1
+            while path.is_dir():
+                counter += 1
+                path = path.parent / f"{name_exp}-{counter}"
+
+        path.mkdir(parents=True)
+
+    return path
 
 
 def make_dir(directory):
@@ -51,8 +44,8 @@ def make_dir(directory):
         os.makedirs(directory)
 
 
-def get_best_weights_path():
-    path = list(Path(config.PATH_EXP).glob("best_weights_ep*.npz"))[0].as_posix()
+def get_best_weights_path(path_exp):
+    path = list(path_exp.glob("best_weights_ep*.npz"))[0]
     return path
 
 
