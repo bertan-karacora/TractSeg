@@ -43,9 +43,9 @@ def crop_to_bbox(img, bbox, spatial_channels_last=False):
 
 
 def main():
-    # TODO: Crop for largest bbox in entire dataset
     args = parse_args()
 
+    img = None
     if args.path_input.endswith(".nrrd"):
         data_img, img_header = nrrd.read(args.path_input)
     elif args.path_input.endswith(".nii.gz"):
@@ -60,10 +60,10 @@ def main():
     bbox = bounding_box(data_reference)
     data_img = crop_to_bbox(data_img, bbox, args.spatial_channels_last)
 
-    if args.path_input.endswith(".nrrd"):
+    if args.path_output.endswith(".nrrd"):
         nrrd.write(args.path_output, data_img, img_header)
-    elif args.path_input.endswith(".nii.gz"):
-        img_output = nib.Nifti1Image(data_img, img.affine)
+    elif args.path_output.endswith(".nii.gz"):
+        img_output = nib.Nifti1Image(data_img, img.affine if img is not None else np.eye(4))
         nib.save(img_output, args.path_output)
     else:
         raise ValueError("Unsupported input file type.")
