@@ -1,4 +1,6 @@
 import importlib_resources
+import itertools
+import multiprocessing
 from pathlib import Path
 
 import argparse
@@ -11,9 +13,13 @@ from tractseg.data import dataset_specific_utils
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run this script to crop nifti images to the brain area.")
+    parser = argparse.ArgumentParser(
+        description="Run this script to crop nifti images to the brain area. It crops to the union of bounding boxes of all the subjects."
+    )
 
     parser.add_argument("--config_exp", metavar="name", help="Name of experiment configuration to use", required=True)
+    parser.add_argument("--filename_features", dest="filename_features", required=True)
+    parser.add_argument("--filename_labels", dest="filename_labels", required=True)
     parser.add_argument("--ref", dest="path_rel_ref", help="Relative path to reference file", required=True)
     parser.add_argument("--spatial_channels_last", action="store_true")
     args = parser.parse_args()
@@ -68,20 +74,19 @@ def load_img(path):
 
 def save_img(path, data, header, affine):
     if path.suffixes == [".nrrd"]:
-        nrrd.write(path.as_posix(), data, header)
+        nrrd.write(path, data, header)
     elif path.suffixes == [".nii", ".gz"]:
         img_output = nib.Nifti1Image(data, affine)
         nib.save(img_output, path)
     else:
-        raise ValueError("Unsupported reference file type.")
+        raise ValueError("Unsupported file type.")
 
 
-def get_largest_bbox(subjects, path_rel_ref, spatial_channels_last=False):
+def get_largest_bbox(subjects, path_rel_ref):
     bboxes = []
     for subject in subjects:
         path_ref = Path(config.PATH_DATA) / subject / path_rel_ref
         data_img, _, _ = load_img(path_ref)
-        data_img = data_img[..., np.newaxis, :, :, :] if spatial_channels_last else data_img[:, :, :, np.newaxis, ...]
         bbox = get_bbox(data_img)
         bboxes += [bbox]
 
@@ -94,8 +99,24 @@ def get_largest_bbox(subjects, path_rel_ref, spatial_channels_last=False):
         ],
         dtype=int,
     )
-    print(np.argmax(bboxes[:, 1, 1]))
+
     return bbox_union
+
+
+def crop_subject(subject, filename_features, filename_labels, bbox_union, spatial_channels_last=False):
+    print(f"Cropping features and tracts for subject {subject}.", flush=True)
+    path_features = Path(config.PATH_DATA) / subject / config.DIR_FEATURES / filename_features
+    path_labels = Path(config.PATH_DATA) / subject / config.DIR_LABELS / filename_labels
+
+    data, header, affine = load_img(path_features)
+    data = crop_to_bbox(data, bbox_union, spatial_channels_last)
+    path_cropped = path_features.with_name(path_features.name.split(".")[0] + "_cropped_union" + "".join(path_features.suffixes))
+    save_img(path_cropped, data, header, affine)
+
+    data, header, affine = load_img(path_labels)
+    data = crop_to_bbox(data, bbox_union)
+    path_cropped = path_labels.with_name(path_labels.name.split(".")[0] + "_cropped_union" + "".join(path_labels.suffixes))
+    save_img(path_cropped, data, header, affine)
 
 
 def main():
@@ -104,23 +125,21 @@ def main():
 
     subjects = dataset_specific_utils.get_subjects(config.DATASET)
 
-    bbox_union = get_largest_bbox(subjects, args.path_rel_ref, args.spatial_channels_last)
-    print("Bounding box:", bbox_union)
+    bbox_union = get_largest_bbox(subjects, args.path_rel_ref)
+    print("Bounding box:\n", bbox_union)
 
-    for subject in subjects:
-        print(f"Cropping features and tracts for subject {subject}.")
-        path_features = Path(config.PATH_DATA) / subject / config.DIR_FEATURES / config.FILENAME_FEATURES
-        path_labels = Path(config.PATH_DATA) / subject / config.DIR_LABELS / config.FILENAME_LABELS
-
-        data, header, affine = load_img(path_features)
-        data = crop_to_bbox(data, bbox_union, args.spatial_channels_last)
-        path_cropped = path_features.with_stem(path_features.stem + "_cropped")
-        save_img(path_cropped, data, header, affine)
-
-        data, header, affine = load_img(path_labels)
-        data = crop_to_bbox(data, bbox_union, args.spatial_channels_last)
-        path_cropped = path_labels.with_name(path_labels.name.split(".")[0] + "_cropped" + "".join(path_labels.suffixes))
-        save_img(path_cropped, data, header, affine)
+    num_processes = multiprocessing.cpu_count() // 2
+    with multiprocessing.Pool(num_processes) as pool:
+        pool.starmap(
+            crop_subject,
+            zip(
+                subjects,
+                itertools.repeat(args.filename_features),
+                itertools.repeat(args.filename_labels),
+                itertools.repeat(bbox_union),
+                itertools.repeat(args.spatial_channels_last),
+            ),
+        )
 
 
 if __name__ == "__main__":
