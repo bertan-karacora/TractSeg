@@ -2,16 +2,17 @@
 TYPE_EXP: "tract_segmentation" # tract_segmentation|endings_segmentation|dm_regression|peak_regression
 
 # Input data
+# TODO: net summary -> weights number
 DATASET: "HCP105"
 PATH_DATA: "/data/HCP"
-DIR_FEATURES: "peaks"
-FILENAME_FEATURES: "peaks_cropped.nii.gz"
+DIR_FEATURES: "mtdeconv"
+FILENAME_FEATURES: "fodf_cropped.nii.gz"
 DIR_LABELS: "bundle_masks"
 CLASSSET: "bundles_all72"
 FILENAME_LABELS: "bundle_masks_cropped.nii.gz"
 
 # TODO: Can be inferred from headers (and experiment type)?
-NR_OF_GRADIENTS: 9
+NR_OF_GRADIENTS: 15
 RESOLUTION: "1.25mm" # 1.25mm|2.5mm
 TYPE_LABELS: "int"
 THRESHOLD: 0.5 # Binary: 0.5, Regression: 0.01
@@ -26,11 +27,11 @@ LR_SCHEDULE_MODE: "min" # min|max
 LR_SCHEDULE_PATIENCE: 20
 UNET_NR_FILT: 64
 EPOCH_MULTIPLIER: 1 # 2D: 1, 3D: 12 for lowRes, 3 for highRes
-NUM_EPOCHS: 200
+NUM_EPOCHS: 250
 SLICE_DIRECTION: "y" # x|y|z  ("combined" needs z)
 TRAINING_SLICE_DIRECTION: "xyz" # y|xyz
 LOSS_FUNCTION: "default" # default|soft_batch_dice
-OPTIMIZER: "Adamax" # TODO: Or Adam?
+OPTIMIZER: "Adamax"
 LOSS_WEIGHT: null # null: no weighting
 LOSS_WEIGHT_LEN: -1 # -1: constant over all epochs
 BATCH_NORM: False
@@ -39,29 +40,24 @@ USE_DROPOUT: True # slightly less overfitting (but max f1_validate maybe slightl
 DROPOUT_SAMPLING: False
 SAVE_WEIGHTS: True
 TYPE: "single" # single|combined
-OUTPUT_MULTIPLE_FILES: False
 RESET_LAST_LAYER: False
 UPSAMPLE_TYPE: "bilinear" # bilinear|nearest
 BEST_EPOCH_SELECTION: "f1" # f1|loss
 METRIC_TYPES: ["loss", "f1_macro"]
 FP16: True
-PEAK_DICE_THR: [0.95]
-PEAK_DICE_LEN_THR: 0.05
-FLIP_OUTPUT_PEAKS: False # flip peaks along z axis to make them compatible with MITK
-USE_VISLOGGER: False
-SEG_INPUT: "Peaks" # Gradients|Peaks
+USE_VISLOGGER: False # TODO: Takes up GPU RAM
+SEG_INPUT: "fodfs" # Gradients|Peaks|fodfs
 NR_SLICES: 1
 PRINT_FREQ: 20
 NORMALIZE_DATA: True
 NORMALIZE_PER_CHANNEL: False
-BEST_EPOCH: 0
 CALC_F1: True
 TEST_TIME_DAUG: False
 PAD_TO_SQUARE: True
 INPUT_RESCALING: False # Resample data to different resolution (instead of doing in preprocessing))
 
 # Data augmentation
-DATA_AUGMENTATION: True
+DATA_AUGMENTATION: False
 DAUG_SCALE: True
 DAUG_NOISE: True
 DAUG_NOISE_VARIANCE: [0, 0.05]

@@ -4,8 +4,8 @@ TYPE_EXP: "tract_segmentation" # tract_segmentation|endings_segmentation|dm_regr
 # Input data
 DATASET: "HCP105"
 PATH_DATA: "/data/HCP"
-DIR_FEATURES: "peaks"
-FILENAME_FEATURES: "peaks_cropped.nii.gz"
+DIR_FEATURES: "fodf_low_rank"
+FILENAME_FEATURES: "fodf_approx_rank_3_cropped.nrrd"
 DIR_LABELS: "bundle_masks"
 CLASSSET: "bundles_all72"
 FILENAME_LABELS: "bundle_masks_cropped.nii.gz"
@@ -19,18 +19,18 @@ THRESHOLD: 0.5 # Binary: 0.5, Regression: 0.01
 # Hyperparams
 MODEL: "UNet_Pytorch_DeepSup"
 SHAPE_INPUT: [144, 144]
-BATCH_SIZE: 40
-LEARNING_RATE: 0.001
+BATCH_SIZE: 40 # Much smaller than in the paper, therefore more updates, faster (but not better) convergence. Have to because of the hardware I have.
+LEARNING_RATE: 0.001 # Don't set larger, if FP16 is set. Else loss will overflow.
 LR_SCHEDULE: True
 LR_SCHEDULE_MODE: "min" # min|max
 LR_SCHEDULE_PATIENCE: 20
 UNET_NR_FILT: 64
 EPOCH_MULTIPLIER: 1 # 2D: 1, 3D: 12 for lowRes, 3 for highRes
-NUM_EPOCHS: 200
+NUM_EPOCHS: 250
 SLICE_DIRECTION: "y" # x|y|z  ("combined" needs z)
 TRAINING_SLICE_DIRECTION: "xyz" # y|xyz
 LOSS_FUNCTION: "default" # default|soft_batch_dice
-OPTIMIZER: "Adamax" # TODO: Or Adam?
+OPTIMIZER: "Adamax"
 LOSS_WEIGHT: null # null: no weighting
 LOSS_WEIGHT_LEN: -1 # -1: constant over all epochs
 BATCH_NORM: False
@@ -44,7 +44,7 @@ RESET_LAST_LAYER: False
 UPSAMPLE_TYPE: "bilinear" # bilinear|nearest
 BEST_EPOCH_SELECTION: "f1" # f1|loss
 METRIC_TYPES: ["loss", "f1_macro"]
-FP16: True
+FP16: True # Speedups from mixed precision is most evident on TensorCore GPUs (like Volta, Tesla, Ampere).
 PEAK_DICE_THR: [0.95]
 PEAK_DICE_LEN_THR: 0.05
 FLIP_OUTPUT_PEAKS: False # flip peaks along z axis to make them compatible with MITK
