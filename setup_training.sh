@@ -283,7 +283,22 @@ convert() {
 crop() {
     echo "Cropping features and tracts..."
 
-    num_processes=6
+    num_processes=12
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Cropping features and tracts for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
+
+        python tractseg/utils/crop.py \
+            -i $dir_subject/peaks/peaks.nii.gz \
+            -o $dir_subject/peaks/peaks_cropped.nii.gz \
+            --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
+    done
+    wait
+
+    num_processes=12
     for id_subject in ${ids_subject[@]}; do
         ((i = i % num_processes))
         ((i++ == 0)) && wait
@@ -296,6 +311,32 @@ crop() {
             -o $dir_subject/fodf_low_rank/fodf_approx_rank_3_cropped.nrrd \
             --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz \
             --spatial_channels_last &
+    done
+    wait
+
+    num_processes=12
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Cropping features and tracts for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
+
+        python tractseg/utils/crop.py \
+            -i $dir_subject/mtdeconv/fodf.nrrd \
+            -o $dir_subject/mtdeconv/fodf_cropped.nrrd \
+            --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz \
+            --spatial_channels_last &
+    done
+    wait
+
+    num_processes=6
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Cropping features and tracts for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
 
         python tractseg/utils/crop.py \
             -i $dir_subject/bundle_masks/bundle_masks.nii.gz \
@@ -311,7 +352,22 @@ crop_union() {
     echo "Cropping features and tracts..."
 
     python tractseg/utils/crop_union.py \
-        --config_exp custom_experiment.yaml \
+        --config_exp exp_peaks.yaml \
+        --filename_features peaks.nii.gz \
+        --filename_labels bundle_masks.nii.gz \
+        --ref Diffusion/nodif_brain_mask.nii.gz
+
+    python tractseg/utils/crop_union.py \
+        --config_exp exp_low_rank.yaml \
+        --filename_features fodf_approx_rank_3.nrrd \
+        --filename_labels bundle_masks.nii.gz \
+        --ref Diffusion/nodif_brain_mask.nii.gz \
+        --spatial_channels_last
+
+    python tractseg/utils/crop_union.py \
+        --config_exp exp_fodfs.yaml \
+        --filename_features fodf.nrrd \
+        --filename_labels bundle_masks.nii.gz \
         --ref Diffusion/nodif_brain_mask.nii.gz \
         --spatial_channels_last
 
@@ -331,6 +387,7 @@ main() {
     extract_low_rank_approx
     extract_peaks
 
+    crop
     crop_union
 }
 
@@ -339,3 +396,8 @@ main() {
 # Run with sudo if necessary. E.g.:
 # nohup sudo -E env PATH=$PATH ./setup_training.sh
 main
+
+# You might want to check all the files if you encounter this issue:
+# zlib.error: Error -3 while decompressing data: incorrect data check
+# Some weird behaviour arises from the pynrrd library. In rare cases it gives incorrect data checksums which make a file unreadable.
+# Similar issue: https://github.com/mhe/pynrrd/issues/29
