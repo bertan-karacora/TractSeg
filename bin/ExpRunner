@@ -3,16 +3,13 @@ import time
 
 import argparse
 import nibabel as nib
-import numpy as np
 
 import tractseg.config as config
 from tractseg.data import dataset_specific_utils
 from tractseg.data.data_loader_training import DataLoaderTraining as DataLoaderTraining2D
 from tractseg.data.data_loader_training_3D import DataLoaderTraining as DataLoaderTraining3D
-from tractseg.data.data_loader_inference import DataLoaderInference
 from tractseg.libs import direction_merger
 from tractseg.libs import exp_utils
-from tractseg.libs import peak_utils
 from tractseg.libs import trainer
 from tractseg.models.base_model import BaseModel
 
@@ -26,7 +23,6 @@ def parse_args():
     parser.add_argument("--train", action="store_true", help="Train network")
     parser.add_argument("--test", action="store_true", help="Test network")
     parser.add_argument("--validate", action="store_true", help="Validate")
-    parser.add_argument("--segment", action="store_true", help="Create binary segmentation")
     parser.add_argument("--probmaps", action="store_true", help="Create probmap segmentation")
     parser.add_argument("--cvfold", metavar="N", help="Which fold to train when doing CrossValidation", type=int, default=0)
 
@@ -34,73 +30,80 @@ def parse_args():
     return args
 
 
-def main():
-    args = parse_args()
+def setup_config(args):
     config.set_attributes(vars(args))
     config.set_config_exp(config.PATH_CONFIG_EXP)
-    config.PATH_EXP = exp_utils.create_dir_exp(config.NAME_EXP)
     config.SUBJECTS = dataset_specific_utils.get_subjects(config.DATASET)
-    config.SUBJECTS_TRAIN, config.SUBJECTS_VALIDATE, config.SUBJECTS_TEST = dataset_specific_utils.get_cvfold(config.CVFOLD)
+    config.SUBJECTS_TRAIN, config.SUBJECTS_VALIDATE, config.SUBJECTS_TEST = dataset_specific_utils.get_cvfold(config.DATASET, config.CVFOLD)
     config.CLASSES = dataset_specific_utils.get_classes(config.CLASSSET)
 
-    print("Config:")
-    config.dump()
     config.save(Path(config.PATH_EXP))
 
+    if config.VERBOSE:
+        print("Config:")
+        config.dump()
+
+
+def train(model, shape_input):
+    print("Training...")
+
+    data_loader = DataLoaderTraining2D() if len(shape_input) == 2 else DataLoaderTraining3D()
+    trainer.train_model(model, data_loader)
+
+    print("Training finished.")
+    return model
+
+
+def test(model, subjects):
+    print("Testing...")
+    metrics = trainer.test_whole_subject(model, subjects, "validate")
+    print("Testing finished.")
+    return metrics
+
+
+def save_probmaps(model, subjects, threshold=0.5):
+    print("Creating probmaps...")
+
+    path_probmaps = Path(config.PATH_EXP) / "probmaps"
+    path_probmaps.mkdir(parents=True, exist_ok=True)
+
+    for subject in subjects:
+        print(f"Creating probmaps for subject {subject}")
+        img_probs, img_y = direction_merger.get_seg_single_img_3_directions(model, subject)
+        img_probs = direction_merger.mean_fusion(threshold, img_probs, probs=True)
+
+        path_labels = Path(config.PATH_DATA) / subject / config.DIR_LABELS / config.FILENAME_LABELS
+        affine = nib.load(path_labels).affine
+        img = nib.Nifti1Image(img_probs, affine)
+
+        path_probmap = path_probmaps / f"{subject}_probmap.nii.gz"
+        nib.save(img, path_probmap)
+
+    print("Creating probmaps finished.")
+
+
+def main():
+    args = parse_args()
+
+    path_exp = Path(config.PATH_DIR_EXP) / args.name_exp
+    path_exp = exp_utils.mkdir_exp(path_exp, use_existing=not args.train)
+    config.PATH_EXP = str(path_exp)
+    setup_config(args)
+
     model = BaseModel()
-    data_loader = DataLoaderTraining2D() if len(config.SHAPE_INPUT) == 2 else DataLoaderTraining3D()
 
     if config.LOAD_WEIGHTS:
-        config.PATH_WEIGHTS = exp_utils.get_best_weights_path()
-        model.load_model(config.PATH_WEIGHTS)
+        model = exp_utils.load_weights(model, exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
 
     if config.TRAIN:
-        print("Training...")
-        trainer.train_model(model, data_loader)
-
-        # After training
-        print(f"Loading best epoch: {config.BEST_EPOCH}")
-        config.PATH_WEIGHTS = exp_utils.get_best_weights_path()
-        model.load_model(config.PATH_WEIGHTS)
-
-    if config.SEGMENT:
-        exp_utils.make_dir((Path(config.PATH_EXP) / "segmentations").as_posix())
-        for subject in config.VALIDATE_SUBJECTS:
-            print(f"Get_segmentation subject {subject}")
-
-            if config.TYPE_EXP == "peak_regression":
-                data_loader = DataLoaderInference(subject=subject)
-                img_probs, img_y = trainer.predict_img(model, data_loader, probs=True)  # only x or y or z
-                img_seg = peak_utils.peak_image_to_binary_mask(img_probs, len_thr=0.4)  # thr: 0.4 slightly better than 0.2
-            else:
-                # returns probs not binary seg
-                img_seg, img_y = direction_merger.get_seg_single_img_3_directions(model, subject)
-                img_seg = direction_merger.mean_fusion(config.THRESHOLD, img_seg, probs=False)
-
-            affine = nib.load(Path(config.PATH_DATA) / config.SUBJECTS[0] / config.DIR_LABELS / config.FILENAME_LABELS).affine
-            img = nib.Nifti1Image(img_seg.astype(np.uint8), affine)
-            nib.save(img, (Path(config.PATH_EXP) / "segmentations" / subject + "_segmentation.nii.gz").as_posix())
+        model = train(model, config.SHAPE_INPUT)
+        model = exp_utils.load_weights(model, exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
 
     if config.TEST:
-        trainer.test_whole_subject(model, config.SUBJECTS_VALIDATE, "validate")
+        test(model, config.SUBJECTS_VALIDATE[:5])
 
     if config.PROBMAPS:
-        exp_utils.make_dir((Path(config.PATH_EXP) / "probmaps").as_posix())
-        all_subjects = config.SUBJECTS_TEST
-        for subject in all_subjects:
-            print("Get_probs subject {}".format(subject))
-            data_loader = DataLoaderInference(subject=subject)
-
-            if config.TYPE_EXP == "peak_regression":
-                img_probs, img_y = trainer.predict_img(model, data_loader, probs=True)
-                img_probs = peak_utils.remove_small_peaks(img_probs, len_thr=0.4)
-            else:
-                img_probs, img_y = direction_merger.get_seg_single_img_3_directions(model, subject=subject)
-                img_probs = direction_merger.mean_fusion(config.THRESHOLD, img_probs, probs=True)
-
-            affine = nib.load(Path(config.PATH_DATA) / config.SUBJECTS[0] / config.DIR_LABELS / config.FILENAME_LABELS).affine
-            img = nib.Nifti1Image(img_probs, dataset_specific_utils.get_dwi_affine(config.DATASET, config.RESOLUTION))
-            nib.save(img, (Path(config.PATH_EXP) / "probmaps" / subject + "_peak.nii.gz").as_posix())
+        save_probmaps(model, config.SUBJECTS_VALIDATE[:5], config.THRESHOLD)
 
 
 if __name__ == "__main__":
