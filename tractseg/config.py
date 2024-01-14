@@ -1,9 +1,10 @@
 import importlib_resources
+from pathlib import Path
 
 import pprint
 import yaml
 
-PATH_CONFIG_SYSTEM = importlib_resources.files("tractseg") / "config.yaml"
+PATH_CONFIG_SYSTEM = str(importlib_resources.files("tractseg") / "config.yaml")
 PATH_CONFIG_EXP = None
 
 
@@ -51,13 +52,13 @@ def set_attributes(config):
 
 
 def set_config_system():
-    config_system = read_config(PATH_CONFIG_SYSTEM)
+    config_system = read_config(Path(PATH_CONFIG_SYSTEM))
     set_attributes(config_system)
 
 
 def set_config_exp(path):
-    globals()["PATH_CONFIG_EXP"] = path
-    config_exp = read_config(PATH_CONFIG_EXP)
+    globals()["PATH_CONFIG_EXP"] = str(path)
+    config_exp = read_config(Path(PATH_CONFIG_EXP))
     set_attributes(config_exp)
 
 
