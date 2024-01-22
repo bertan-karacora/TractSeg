@@ -9,7 +9,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="""
             Convert a trk streamline file to a binary map.
-            Example usage: python trk_2_binary.py -i CST_right.trk -o CST_right.nii.gz -ref nodif_brain_mask.nii.gz
+            Example usage: python mask.py -i CST_right.trk -o CST_right.nii.gz -ref nodif_brain_mask.nii.gz
         """
     )
     parser.add_argument("-i", dest="path_input", required=True)
@@ -66,7 +66,7 @@ def main():
     if args.close_holes:
         dm_bin = sp.ndimage.binary_closing(dm_bin, structure=np.ones((1, 1, 1)))
 
-    # Nibabel does not support bool dtype.
+    # Nibabel does not support bool dtype, so let's use uint8 for minimal I/O.
     img_dm_binary = nib.Nifti1Image(dm_bin.astype(np.uint8), img_ref.affine)
     nib.save(img_dm_binary, args.path_output)
 

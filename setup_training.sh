@@ -33,24 +33,24 @@ download_tracts() {
     echo "Downloading tracts finished."
 }
 
-binarize_tracts() {
-    echo "Binarizing tracts..."
+mask_tracts() {
+    echo "Masking tracts..."
 
     for id_subject in ${ids_subject[@]}; do
-        echo "Binarizing tracts for subject $id_subject"
+        echo "Masking tracts for subject $id_subject"
 
         dir_subject=$dir_data/$id_subject
-        dir_out=$dir_subject/tracts_binarized
+        dir_out=$dir_subject/tracts_masks
         mkdir -p $dir_out
 
-        num_processes=6
-        for file_trk in /home/lab1/data_tmp/HCP/$id_subject/tracts/*.trk; do
+        num_processes=12
+        for file_trk in $dir_subject/tracts/*.trk; do
             ((i = i % num_processes))
             ((i++ == 0)) && wait
             name_tract=$(basename ${file_trk%.*})
-            echo "Binarizing $name_tract for subject $id_subject."
+            echo "Masking $name_tract for subject $id_subject."
 
-            python tractseg/utils/trk_2_binary.py \
+            python tractseg/utils/mask.py \
                 -i $file_trk \
                 -o $dir_out/$name_tract.nii.gz \
                 --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
@@ -59,7 +59,7 @@ binarize_tracts() {
     done
     wait
 
-    echo "Binarizing tracts finished."
+    echo "Masking tracts finished."
 }
 
 concat() {
@@ -76,8 +76,9 @@ concat() {
         mkdir -p $dir_out
 
         python tractseg/utils/concat.py \
-            -i $dir_subject/tracts_binarized \
-            -o $dir_out/bundle_masks.nii.gz &
+            -i $dir_subject/tracts_masks \
+            -o $dir_out/bundle_masks.nii.gz \
+            --path_config_exp /home/lab1/TractSeg/tractseg/experiments/custom/exp_peaks.yaml &
     done
     wait
 

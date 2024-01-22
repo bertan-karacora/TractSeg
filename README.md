@@ -413,7 +413,7 @@ you need help training your own model.
 
 1. Use your own data or download the data from [Zenodo](https://doi.org/10.5281/zenodo.1088277)
 2. If you have streamlines you have to transform them to binary masks.
-You can use [this](https://github.com/MIC-DKFZ/TractSeg/blob/master/resources/utility_scripts/trk_2_binary.py)
+You can use [this](https://github.com/MIC-DKFZ/TractSeg/blob/master/resources/utility_scripts/mask.py)
 script for that.
 (If you want to train a TOM model you have to create peak maps from the streamlines. This can be done
 by using the MITK Diffusion miniapp `MitkFiberDirectionExtraction`. See the following two issues for more
