@@ -32,7 +32,7 @@ def parse_args():
 
 def setup_config(args):
     config.set_attributes(vars(args))
-    config.set_config_exp(config.PATH_CONFIG_EXP)
+    config.set_config_exp(Path(config.PATH_CONFIG_EXP))
     config.SUBJECTS = dataset_specific_utils.get_subjects(config.DATASET)
     config.SUBJECTS_TRAIN, config.SUBJECTS_VALIDATE, config.SUBJECTS_TEST = dataset_specific_utils.get_cvfold(config.DATASET, config.CVFOLD)
     config.CLASSES = dataset_specific_utils.get_classes(config.CLASSSET)
@@ -100,7 +100,7 @@ def main():
         model = exp_utils.load_weights(model, exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
 
     if config.TEST:
-        test(model, config.SUBJECTS_VALIDATE[:5])
+        test(model, config.SUBJECTS_VALIDATE)
 
     if config.PROBMAPS:
         save_probmaps(model, config.SUBJECTS_VALIDATE[:5], config.THRESHOLD)
