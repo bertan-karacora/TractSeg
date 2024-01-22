@@ -1,4 +1,3 @@
-import importlib_resources
 import itertools
 import multiprocessing
 from pathlib import Path
@@ -17,21 +16,13 @@ def parse_args():
         description="Run this script to crop nifti images to the brain area. It crops to the union of bounding boxes of all the subjects."
     )
 
-    parser.add_argument("--config_exp", metavar="name", help="Name of experiment configuration to use", required=True)
+    parser.add_argument("--path_config_exp", metavar="path", help="Path of experiment configuration to use", required=True)
     parser.add_argument("--filename_features", dest="filename_features", required=True)
     parser.add_argument("--filename_labels", dest="filename_labels", required=True)
     parser.add_argument("--ref", dest="path_rel_ref", help="Relative path to reference file", required=True)
     parser.add_argument("--spatial_channels_last", action="store_true")
     args = parser.parse_args()
     return args
-
-
-def read_config_exp(filename_config=None):
-    path_dir_configs_exp = importlib_resources.files("tractseg.experiments")
-    config.set_config_exp(path_dir_configs_exp / "base.yaml")
-
-    if filename_config is not None:
-        config.set_config_exp(path_dir_configs_exp / "custom" / filename_config)
 
 
 def get_bbox(data, value_background=0):
@@ -121,7 +112,7 @@ def crop_subject(subject, filename_features, filename_labels, bbox_union, spatia
 
 def main():
     args = parse_args()
-    read_config_exp(args.config_exp)
+    config.set_config_exp(Path(args.path_config_exp))
 
     subjects = dataset_specific_utils.get_subjects(config.DATASET)
 

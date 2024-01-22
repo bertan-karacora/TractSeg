@@ -353,20 +353,20 @@ crop_union() {
     echo "Cropping features and tracts..."
 
     python tractseg/utils/crop_union.py \
-        --config_exp exp_peaks.yaml \
+        --path_config_exp /home/lab1/TractSeg/tractseg/experiments/custom/exp_peaks.yaml \
         --filename_features peaks.nii.gz \
         --filename_labels bundle_masks.nii.gz \
         --ref Diffusion/nodif_brain_mask.nii.gz
 
     python tractseg/utils/crop_union.py \
-        --config_exp exp_low_rank.yaml \
+        --path_config_exp /home/lab1/TractSeg/tractseg/experiments/custom/exp_low_rank.yaml \
         --filename_features fodf_approx_rank_3.nrrd \
         --filename_labels bundle_masks.nii.gz \
         --ref Diffusion/nodif_brain_mask.nii.gz \
         --spatial_channels_last
 
     python tractseg/utils/crop_union.py \
-        --config_exp exp_fodfs.yaml \
+        --path_config_exp /home/lab1/TractSeg/tractseg/experiments/custom/exp_fodfs.yaml \
         --filename_features fodf.nrrd \
         --filename_labels bundle_masks.nii.gz \
         --ref Diffusion/nodif_brain_mask.nii.gz \
