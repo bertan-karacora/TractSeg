@@ -9,6 +9,7 @@ from tqdm import tqdm
 from pprint import pprint
 
 import tractseg.config as config
+from tractseg.libs import direction_merger
 from tractseg.libs import exp_utils
 from tractseg.libs import metric_utils
 from tractseg.libs import plot_utils
@@ -129,8 +130,8 @@ def train_model(model, data_loader):
                     print_loss = []
 
                 if config.USE_VISLOGGER:
-                    writer.add_scalar(f"Loss/{type}", metr_batch["loss"], epoch_nr * nr_batches + nr_batch)
-                    writer.add_scalar(f"F1/{type}", np.mean(metr_batch["f1_macro"]), epoch_nr * nr_batches + nr_batch)
+                    writer.add_scalar(f"Loss/{type}", metr_batch["loss"], epoch_nr * nr_batches + i)
+                    writer.add_scalar(f"F1/{type}", np.mean(metr_batch["f1_macro"]), epoch_nr * nr_batches + i)
 
                     if i == nr_batches - 1:
                         num_images = 5
@@ -356,9 +357,9 @@ def test_whole_subject(model, subjects, type):
         start_time = time.time()
 
         data_loader = DataLoaderInference(subject=subject)
-        img_probs, img_y = predict_img(model, data_loader, probs=True)
-        # img_probs_xyz, img_y = DirectionMerger.get_seg_single_img_3_directions(model, subject=subject)
-        # img_probs = DirectionMerger.mean_fusion(config.THRESHOLD, img_probs_xyz, probs=True)
+        # img_probs, img_y = predict_img(model, data_loader, probs=True)
+        img_probs_xyz, img_y = direction_merger.get_seg_single_img_3_directions(model, subject=subject)
+        img_probs = direction_merger.mean_fusion(config.THRESHOLD, img_probs_xyz, probs=True)
 
         print("Took {}s".format(round(time.time() - start_time, 2)))
 
