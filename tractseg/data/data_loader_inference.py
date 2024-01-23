@@ -72,9 +72,7 @@ class BatchGenerator2D_data_ordered_standalone(object):
                 slice_window=config.NR_SLICES,
             )
         else:
-            x, y = data_utils.sample_slices(
-                data, seg, slice_idxs, slice_direction=slice_direction, labels_type=exp_utils.get_type_labels(config.TYPE_LABELS)
-            )
+            x, y = data_utils.sample_slices(data, seg, slice_idxs, slice_direction=slice_direction)
 
         x = x.astype(np.float32)
         y = y.astype(np.float32)
@@ -147,7 +145,7 @@ class DataLoaderInference:
             exp_utils.print_verbose(config.VERBOSE, "Loading data from PREDICT_IMG input file")
             data = np.nan_to_num(self.data)
             # Use dummy mask in case we only want to predict on some data (where we do not have ground truth))
-            seg = np.zeros((config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], len(config.CLASSES) - 1)).astype(
+            seg = np.zeros((config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], config.SHAPE_INPUT[0], len(config.CLASSES))).astype(
                 exp_utils.get_type_labels(config.TYPE_LABELS)
             )
         elif self.subject is not None:
@@ -172,7 +170,7 @@ class DataLoaderInference:
         else:
             raise ValueError("Neither 'data' nor 'subject' set.")
 
-        if len(config.SHAPE_INPUT):
+        if len(config.SHAPE_INPUT) == 2:
             batch_gen = BatchGenerator2D_data_ordered_standalone((data, seg), batch_size=batch_size)
         else:
             batch_gen = BatchGenerator3D_data_ordered_standalone((data, seg), batch_size=batch_size)

@@ -39,21 +39,6 @@ from tractseg.libs import peak_utils
 from tractseg.libs import exp_utils
 
 
-def load_img(path_img):
-    if path_img.suffixes == [".nrrd"]:
-        # bonndit output: (4, r, x, y, z)
-        # TODO: Do this as preprocessing?
-        data_img, _ = nrrd.read(path_img)
-        data_img = data_img[1:].transpose(2, 3, 4, 1, 0)
-        data_img = data_img.reshape(*data_img.shape[:-2], -1)
-    elif path_img.suffixes == [".nii", ".gz"]:
-        data_img = nib.load(path_img).get_fdata()
-    else:
-        raise ValueError("Unsupported input file type.")
-
-    return data_img
-
-
 def load_training_data(subject):
     """
     Load data and labels for one subject from the training set. Cut and scale to make them have
@@ -65,10 +50,33 @@ def load_training_data(subject):
     Returns:
         data and labels as 3D array
     """
+
+    def load_img(path_img):
+        if path_img.suffixes == [".nrrd"]:
+            if config.SEG_INPUT == "fodfs":
+                # bonndit output: (16, x, y, z)
+                data_img, _ = nrrd.read(path_img)
+                data_img = data_img[1:].transpose(1, 2, 3, 0)
+            else:
+                # bonndit output: (4, r, x, y, z)
+                # TODO: Do this as preprocessing?
+                data_img, _ = nrrd.read(path_img)
+                # TODO: Use lambda?
+                data_img = data_img[1:].transpose(2, 3, 4, 1, 0)
+                data_img = data_img.reshape(*data_img.shape[:-2], -1)
+        elif path_img.suffixes == [".nii", ".gz"]:
+            # TODO: try np.asarray(array_img.dataobj)
+            data_img = nib.load(path_img).get_fdata()
+        else:
+            raise ValueError("Unsupported input file type.")
+
+        return data_img
+
     path_subject = Path(config.PATH_DATA) / subject
+    # print(subject)
     data = load_img(path_subject / config.DIR_FEATURES / config.FILENAME_FEATURES)
     seg = load_img(path_subject / config.DIR_LABELS / config.FILENAME_LABELS)
-
+    # print(f"{subject} success")
     return data, seg
 
 
@@ -124,8 +132,8 @@ class BatchGenerator2D_Nifti_random(SlimDataLoaderBase):
             y = pad_nd_image(y, shape_must_be_divisible_by=(16, 16), mode="constant", kwargs={"constant_values": 0})
 
         # Does not make it slower
-        x = x.astype(np.float32)
-        y = y.astype(np.float32)
+        x = np.nan_to_num(x).astype(np.float32)
+        y = np.nan_to_num(y).astype(np.float32)
 
         # (batch_size, channels, x, y, [z])
         data_dict = {"data": x, "seg": y, "slice_dir": slice_direction}
@@ -176,7 +184,7 @@ class DataLoaderTraining:
         tfs = []
 
         if config.NORMALIZE_DATA:
-            # todo: Use original transform as soon as bug fixed in batchgenerators
+            # TODO: Use original transform as soon as bug fixed in batchgenerators
             # tfs.append(ZeroMeanUnitVarianceTransform(per_channel=config.NORMALIZE_PER_CHANNEL))
             tfs.append(ZeroMeanUnitVarianceTransform_Standalone(per_channel=config.NORMALIZE_PER_CHANNEL))
 
@@ -258,9 +266,8 @@ class DataLoaderTraining:
 
         # Set num_processes rather low because otherwise threads get killed for some reason (RAM looks actually okay, no idea why this happens)
         # This choice is based on the hard-coded value 15 processes that is used in the code as provided with the original paper by Wasserthal et al.
-        # In the paper they state that the used a 48-core Intel Xeon CPU, so let's set this to one third of the core number.
-        # num_processes = multiprocessing.cpu_count() // 3
-        num_processes = 6
+        # In the paper they state that the used a 48-core Intel Xeon CPU, so let's set this to one half of the core number.
+        num_processes = multiprocessing.cpu_count() // 2
         # num_cached_per_queue 1 or 2 does not really make a difference
         batch_gen = MultiThreadedAugmenter(
             batch_generator, Compose(tfs), num_processes=num_processes, num_cached_per_queue=2, seeds=None, pin_memory=True
