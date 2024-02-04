@@ -18,7 +18,7 @@ from tractseg.libs import peak_utils
 from tractseg.libs import img_utils
 from tractseg.data.data_loader_inference import DataLoaderInference
 from tractseg.data import dataset_specific_utils
-from tractseg.libs import trainer
+from tractseg.libs import train
 from tractseg.models.base_model import BaseModel
 
 warnings.simplefilter("ignore", UserWarning)  # hide scipy warnings
@@ -169,7 +169,7 @@ def run_tractseg(
         if single_orientation:  # mainly needed for testing because of less RAM requirements
             data_loder_inference = DataLoaderInference(data=data)
             if config.DROPOUT_SAMPLING or config.TYPE_EXP == "dm_regression" or config.GET_PROBS:
-                seg, _ = trainer.predict_img(
+                seg, _ = train.predict_img(
                     model,
                     data_loder_inference,
                     probs=True,
@@ -179,7 +179,7 @@ def run_tractseg(
                     unit_test=unit_test,
                 )
             else:
-                seg, _ = trainer.predict_img(
+                seg, _ = train.predict_img(
                     model,
                     data_loder_inference,
                     probs=False,
@@ -227,7 +227,7 @@ def run_tractseg(
 
             if single_orientation:
                 data_loder_inference = DataLoaderInference(data=data)
-                seg, _ = trainer.predict_img(
+                seg, _ = train.predict_img(
                     model, data_loder_inference, probs=True, scale_to_world_shape=False, only_prediction=True, batch_size=inference_batch_size
                 )
             else:

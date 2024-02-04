@@ -14,6 +14,7 @@ from tractseg.libs import exp_utils
 from tractseg.libs import metric_utils
 from tractseg.libs import plot_utils
 from tractseg.data.data_loader_inference import DataLoaderInference
+from tractseg.data.data_loader_training import DataLoaderTraining
 
 
 def _get_weights_for_this_epoch(epoch_nr):
@@ -48,11 +49,13 @@ def _update_metrics(calc_f1, TYPE_EXP, metric_types, metrics, metr_batch, type):
     return metrics
 
 
-def train_model(model, data_loader):
+def train_model(model):
     if config.USE_VISLOGGER:
         from torch.utils.tensorboard import SummaryWriter
 
         writer = SummaryWriter(config.PATH_EXP)
+
+    data_loader = DataLoaderTraining()
 
     epoch_times = []
     nr_of_updates = 0

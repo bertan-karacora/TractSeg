@@ -5,12 +5,10 @@ import argparse
 import nibabel as nib
 
 import tractseg.config as config
-from tractseg.data import dataset_specific_utils
-from tractseg.data.data_loader_training import DataLoaderTraining as DataLoaderTraining2D
-from tractseg.data.data_loader_training_3D import DataLoaderTraining as DataLoaderTraining3D
-from tractseg.libs import direction_merger
-from tractseg.libs import exp_utils
-from tractseg.libs import trainer
+import tractseg.data.dataset_specific_utils
+import tractseg.libs.direction_merger
+import tractseg.libs.exp_utils
+import tractseg.libs.train
 from tractseg.models.base_model import BaseModel
 
 
@@ -33,9 +31,11 @@ def parse_args():
 def setup_config(args):
     config.set_attributes(vars(args))
     config.set_config_exp(Path(config.PATH_CONFIG_EXP))
-    config.SUBJECTS = dataset_specific_utils.get_subjects(config.DATASET)
-    config.SUBJECTS_TRAIN, config.SUBJECTS_VALIDATE, config.SUBJECTS_TEST = dataset_specific_utils.get_cvfold(config.DATASET, config.CVFOLD)
-    config.CLASSES = dataset_specific_utils.get_classes(config.CLASSSET)
+    config.SUBJECTS = tractseg.data.dataset_specific_utils.get_subjects(config.DATASET)
+    config.SUBJECTS_TRAIN, config.SUBJECTS_VALIDATE, config.SUBJECTS_TEST = tractseg.data.dataset_specific_utils.get_cvfold(
+        config.DATASET, config.CVFOLD
+    )
+    config.CLASSES = tractseg.data.dataset_specific_utils.get_classes(config.CLASSSET)
 
     config.save(Path(config.PATH_EXP))
 
@@ -47,8 +47,7 @@ def setup_config(args):
 def train(model, shape_input):
     print("Training...")
 
-    data_loader = DataLoaderTraining2D() if len(shape_input) == 2 else DataLoaderTraining3D()
-    trainer.train_model(model, data_loader)
+    tractseg.libs.train.train_model(model)
 
     print("Training finished.")
     return model
@@ -56,7 +55,7 @@ def train(model, shape_input):
 
 def test(model, subjects):
     print("Testing...")
-    metrics = trainer.test_whole_subject(model, subjects, "validate")
+    metrics = tractseg.libs.train.test_whole_subject(model, subjects, "validate")
     print("Testing finished.")
     return metrics
 
@@ -69,8 +68,8 @@ def save_probmaps(model, subjects, threshold=0.5):
 
     for subject in subjects:
         print(f"Creating probmaps for subject {subject}")
-        img_probs, img_y = direction_merger.get_seg_single_img_3_directions(model, subject)
-        img_probs = direction_merger.mean_fusion(threshold, img_probs, probs=True)
+        img_probs, img_y = tractseg.libs.direction_merger.get_seg_single_img_3_directions(model, subject)
+        img_probs = tractseg.libs.direction_merger.mean_fusion(threshold, img_probs, probs=True)
 
         path_labels = Path(config.PATH_DATA) / subject / config.DIR_LABELS / config.FILENAME_LABELS
         affine = nib.load(path_labels).affine
@@ -86,24 +85,24 @@ def main():
     args = parse_args()
 
     path_exp = Path(config.PATH_DIR_EXP) / args.name_exp
-    path_exp = exp_utils.mkdir_exp(path_exp, use_existing=not args.train)
+    path_exp = tractseg.libs.exp_utils.mkdir_exp(path_exp, use_existing=not args.train)
     config.PATH_EXP = str(path_exp)
     setup_config(args)
 
     model = BaseModel()
 
     if config.LOAD_WEIGHTS:
-        model = exp_utils.load_weights(model, exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
+        model = tractseg.libs.exp_utils.load_weights(model, tractseg.libs.exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
 
     if config.TRAIN:
         model = train(model, config.SHAPE_INPUT)
-        model = exp_utils.load_weights(model, exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
+        model = tractseg.libs.exp_utils.load_weights(model, tractseg.libs.exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
 
     if config.TEST:
         test(model, config.SUBJECTS_VALIDATE)
 
     if config.PROBMAPS:
-        save_probmaps(model, config.SUBJECTS_VALIDATE[:5], config.THRESHOLD)
+        save_probmaps(model, config.SUBJECTS_VALIDATE, config.THRESHOLD)
 
 
 if __name__ == "__main__":

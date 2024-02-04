@@ -10,7 +10,7 @@ from tractseg.libs import peak_utils
 
 
 def get_seg_single_img_3_directions(model, subject=None, data=None, scale_to_world_shape=True, only_prediction=False, batch_size=1):
-    from tractseg.libs import trainer
+    from tractseg.libs import train
 
     prob_slices = []
     directions = ["x", "y", "z"]
@@ -23,7 +23,7 @@ def get_seg_single_img_3_directions(model, subject=None, data=None, scale_to_wor
         else:
             dataManagerSingle = DataLoaderInference(data=data)  # runtime on HCP data 0s
 
-        img_probs, img_y = trainer.predict_img(
+        img_probs, img_y = train.predict_img(
             model, dataManagerSingle, probs=True, scale_to_world_shape=scale_to_world_shape, only_prediction=only_prediction, batch_size=batch_size
         )  # (x, y, z, nr_classes)
         prob_slices.append(img_probs)
