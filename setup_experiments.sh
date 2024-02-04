@@ -381,7 +381,7 @@ main() {
     install_batchgenerators
 
     download_tracts
-    binarize_tracts
+    mask_tracts
     concat
 
     extract_fods
@@ -395,7 +395,7 @@ main() {
 # This script assumes data from the HCP is already available.
 # It should contain the files: bvecs, bvals, data.nii.gz, nodif_brain_mask.nii.gz.
 # Run with sudo if necessary. E.g.:
-# nohup sudo -E env PATH=$PATH ./setup_training.sh
+# nohup sudo -E env PATH=$PATH ./setup_experiments.sh
 main
 
 # You might want to check all the files if you encounter this issue:
