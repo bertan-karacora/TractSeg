@@ -264,23 +264,6 @@ extract_peaks() {
     echo "Extracting peaks from fODs finished."
 }
 
-convert() {
-    echo "Converting feature files to nifti..."
-
-    for id_subject in ${ids_subject[@]}; do
-        echo "Converting feature files to nifti for subject $id_subject."
-
-        dir_subject=$dir_data/$id_subject
-
-        bonndit2mrtrix \
-            -i $dir_subject/fodf_low_rank/fodf_approx_rank_3.nrrd \
-            -o $dir_subject/fodf_low_rank/fodf_approx_rank_3.nii.gz &
-    done
-    wait
-
-    echo "Converting feature files to nifti finished."
-}
-
 crop() {
     echo "Cropping features and tracts..."
 
@@ -411,6 +394,26 @@ preprocess() {
     echo "Preprocessing features finished."
 }
 
+tensor2sh() {
+    echo "Converting fodf tensors to SH..."
+
+    num_processes=12
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Converting fodf tensors to SH for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
+
+        bonndit2mrtrix \
+            -i $dir_subject/mtdeconv/fodf_cropped.nrrd \
+            -o $dir_subject/mtdeconv/fodf_cropped_sh.nii.gz &
+    done
+    wait
+
+    echo "Converting fodf tensors to SH finished."
+}
+
 main() {
     activate_python_venv
     install_bonndit
@@ -428,6 +431,7 @@ main() {
     crop_union
 
     preprocess
+    tensor2sh
 }
 
 # This script assumes data from the HCP is already available.
