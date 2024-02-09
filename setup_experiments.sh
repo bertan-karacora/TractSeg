@@ -375,6 +375,42 @@ crop_union() {
     echo "Cropping features and tracts finished."
 }
 
+preprocess() {
+    echo "Preprocessing features..."
+
+    num_processes=12
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Preprocessing features for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
+
+        python tractseg/utils/preprocess.py \
+            -i $dir_subject/fodf_low_rank/fodf_approx_rank_3_cropped.nrrd \
+            -o $dir_subject/fodf_low_rank/fodf_approx_rank_3_preprocessed.nii.gz \
+            --type rank_k &
+    done
+    wait
+
+    num_processes=12
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Preprocessing features for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
+
+        python tractseg/utils/preprocess.py \
+            -i $dir_subject/mtdeconv/fodf_cropped.nrrd \
+            -o $dir_subject/mtdeconv/fodf_preprocessed.nii.gz \
+            --type fodfs &
+    done
+    wait
+
+    echo "Preprocessing features finished."
+}
+
 main() {
     activate_python_venv
     install_bonndit
@@ -390,6 +426,8 @@ main() {
 
     crop
     crop_union
+
+    preprocess
 }
 
 # This script assumes data from the HCP is already available.
