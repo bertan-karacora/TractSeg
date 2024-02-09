@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -27,6 +26,7 @@ def rotate_multiple_peaks(data, angle_x, angle_y, angle_z):
 
     data: 2D or 3D 3-peak image (9, x, y, [z])
     """
+
     def rotate_peaks(peaks, angle_x, angle_y, angle_z):
         rot_matrix = np.identity(3)
         rot_matrix = create_matrix_rotation_x_3d(angle_x, rot_matrix)
@@ -40,7 +40,7 @@ def rotate_multiple_peaks(data, angle_x, angle_y, angle_z):
 
     peaks_rot = np.zeros(data.shape)
     for i in range(3):
-        peaks_rot[i*3:(i+1)*3, ...] = rotate_peaks(data[i*3:(i+1)*3, ...], angle_x, angle_y, angle_z)
+        peaks_rot[i * 3 : (i + 1) * 3, ...] = rotate_peaks(data[i * 3 : (i + 1) * 3, ...], angle_x, angle_y, angle_z)
 
     return peaks_rot
 
@@ -69,32 +69,50 @@ def rotate_multiple_tensors(data, angle_x, angle_y, angle_z):
 
     peaks_rot = np.zeros(data.shape)
     for i in range(3):
-        peaks_rot[..., i*6:(i+1)*6] = rotate_tensors(data[..., i*6:(i+1)*6], angle_x, angle_y, angle_z)
+        peaks_rot[..., i * 6 : (i + 1) * 6] = rotate_tensors(data[..., i * 6 : (i + 1) * 6], angle_x, angle_y, angle_z)
 
     peaks_rot = np.moveaxis(peaks_rot, -1, 0)  # move channels to front
     return peaks_rot
 
 
-def augment_spatial_peaks(data, seg, patch_size, patch_center_dist_from_border=30,
-                    do_elastic_deform=True, alpha=(0., 1000.), sigma=(10., 13.),
-                    do_rotation=True, angle_x=(0, 2 * np.pi), angle_y=(0, 2 * np.pi), angle_z=(0, 2 * np.pi),
-                    do_scale=True, scale=(0.75, 1.25), border_mode_data='nearest', border_cval_data=0, order_data=3,
-                    border_mode_seg='constant', border_cval_seg=0, order_seg=0, random_crop=True, p_el_per_sample=1,
-                    p_scale_per_sample=1, p_rot_per_sample=1, slice_dir=None):
+def augment_spatial_peaks(
+    data,
+    seg,
+    patch_size,
+    patch_center_dist_from_border=30,
+    do_elastic_deform=True,
+    alpha=(0.0, 1000.0),
+    sigma=(10.0, 13.0),
+    do_rotation=True,
+    angle_x=(0, 2 * np.pi),
+    angle_y=(0, 2 * np.pi),
+    angle_z=(0, 2 * np.pi),
+    do_scale=True,
+    scale=(0.75, 1.25),
+    border_mode_data="nearest",
+    border_cval_data=0,
+    order_data=3,
+    border_mode_seg="constant",
+    border_cval_seg=0,
+    order_seg=0,
+    random_crop=True,
+    p_el_per_sample=1,
+    p_scale_per_sample=1,
+    p_rot_per_sample=1,
+    slice_dir=None,
+):
     dim = len(patch_size)
     seg_result = None
     if seg is not None:
         if dim == 2:
             seg_result = np.zeros((seg.shape[0], seg.shape[1], patch_size[0], patch_size[1]), dtype=np.float32)
         else:
-            seg_result = np.zeros((seg.shape[0], seg.shape[1], patch_size[0], patch_size[1], patch_size[2]),
-                                  dtype=np.float32)
+            seg_result = np.zeros((seg.shape[0], seg.shape[1], patch_size[0], patch_size[1], patch_size[2]), dtype=np.float32)
 
     if dim == 2:
         data_result = np.zeros((data.shape[0], data.shape[1], patch_size[0], patch_size[1]), dtype=np.float32)
     else:
-        data_result = np.zeros((data.shape[0], data.shape[1], patch_size[0], patch_size[1], patch_size[2]),
-                               dtype=np.float32)
+        data_result = np.zeros((data.shape[0], data.shape[1], patch_size[0], patch_size[1], patch_size[2]), dtype=np.float32)
 
     if not isinstance(patch_center_dist_from_border, (list, tuple, np.ndarray)):
         patch_center_dist_from_border = dim * [patch_center_dist_from_border]
@@ -145,29 +163,29 @@ def augment_spatial_peaks(data, seg, patch_size, patch_center_dist_from_border=3
         if modified_coords:
             for d in range(dim):
                 if random_crop:
-                    ctr = np.random.uniform(patch_center_dist_from_border[d],
-                                            data.shape[d + 2] - patch_center_dist_from_border[d])
+                    ctr = np.random.uniform(patch_center_dist_from_border[d], data.shape[d + 2] - patch_center_dist_from_border[d])
                 else:
-                    ctr = int(np.round(data.shape[d + 2] / 2.))
+                    ctr = int(np.round(data.shape[d + 2] / 2.0))
                 coords[d] += ctr
             for channel_id in range(data.shape[1]):
-                data_result[sample_id, channel_id] = interpolate_img(data[sample_id, channel_id], coords, order_data,
-                                                                     border_mode_data, cval=border_cval_data)
+                data_result[sample_id, channel_id] = interpolate_img(
+                    data[sample_id, channel_id], coords, order_data, border_mode_data, cval=border_cval_data
+                )
             if seg is not None:
                 for channel_id in range(seg.shape[1]):
-                    seg_result[sample_id, channel_id] = interpolate_img(seg[sample_id, channel_id], coords, order_seg,
-                                                                        border_mode_seg, cval=border_cval_seg,
-                                                                        is_seg=True)
+                    seg_result[sample_id, channel_id] = interpolate_img(
+                        seg[sample_id, channel_id], coords, order_seg, border_mode_seg, cval=border_cval_seg, is_seg=True
+                    )
         else:
             if seg is None:
                 s = None
             else:
-                s = seg[sample_id:sample_id + 1]
+                s = seg[sample_id : sample_id + 1]
             if random_crop:
                 margin = [patch_center_dist_from_border[d] - patch_size[d] // 2 for d in range(dim)]
-                d, s = random_crop_aug(data[sample_id:sample_id + 1], s, patch_size, margin)
+                d, s = random_crop_aug(data[sample_id : sample_id + 1], s, patch_size, margin)
             else:
-                d, s = center_crop_aug(data[sample_id:sample_id + 1], patch_size, s)
+                d, s = center_crop_aug(data[sample_id : sample_id + 1], patch_size, s)
             data_result[sample_id] = d[0]
             if seg is not None:
                 seg_result[sample_id] = s[0]
@@ -187,8 +205,8 @@ def augment_spatial_peaks(data, seg, patch_size, patch_center_dist_from_border=3
             a_y = sampled_2D_angle
         elif slice_dir == 2:
             # Somehow we have to invert rotation direction for z to make align properly with rotated voxels.
-            #  Unclear why this is the case. Maybe some different conventions for peaks and voxels??
-            a_z = sampled_2D_angle * -1
+            # Unclear why this is the case. Maybe some different conventions for peaks and voxels??
+            a_z = sampled_2D_angle
         else:
             raise ValueError("invalid slice_dir passed as argument")
 
@@ -251,12 +269,33 @@ class SpatialTransformPeaks(AbstractTransform):
         random_crop: True: do a random crop of size patch_size and minimal distance to border of
         patch_center_dist_from_border. False: do a center crop of size patch_size
     """
-    def __init__(self, patch_size, patch_center_dist_from_border=30,
-                 do_elastic_deform=True, alpha=(0., 1000.), sigma=(10., 13.),
-                 do_rotation=True, angle_x=(0, 2 * np.pi), angle_y=(0, 2 * np.pi), angle_z=(0, 2 * np.pi),
-                 do_scale=True, scale=(0.75, 1.25), border_mode_data='nearest', border_cval_data=0, order_data=3,
-                 border_mode_seg='constant', border_cval_seg=0, order_seg=0, random_crop=True,
-                 data_key="data", label_key="seg", p_el_per_sample=1, p_scale_per_sample=1, p_rot_per_sample=1):
+
+    def __init__(
+        self,
+        patch_size,
+        patch_center_dist_from_border=30,
+        do_elastic_deform=True,
+        alpha=(0.0, 1000.0),
+        sigma=(10.0, 13.0),
+        do_rotation=True,
+        angle_x=(0, 2 * np.pi),
+        angle_y=(0, 2 * np.pi),
+        angle_z=(0, 2 * np.pi),
+        do_scale=True,
+        scale=(0.75, 1.25),
+        border_mode_data="nearest",
+        border_cval_data=0,
+        order_data=3,
+        border_mode_seg="constant",
+        border_cval_seg=0,
+        order_seg=0,
+        random_crop=True,
+        data_key="data",
+        label_key="seg",
+        p_el_per_sample=1,
+        p_scale_per_sample=1,
+        p_rot_per_sample=1,
+    ):
         self.p_rot_per_sample = p_rot_per_sample
         self.p_scale_per_sample = p_scale_per_sample
         self.p_el_per_sample = p_el_per_sample
@@ -285,8 +324,8 @@ class SpatialTransformPeaks(AbstractTransform):
         data = data_dict.get(self.data_key)
         seg = data_dict.get(self.label_key)
 
-        #NEW: pass slice direction, because peak rotation depends on it
-        slice_dir = data_dict.get("slice_dir")
+        # NEW: pass slice direction, because peak rotation depends on it
+        slice_dir = data_dict.get("direction_slicing")
 
         if self.patch_size is None:
             if len(data.shape) == 4:
@@ -298,21 +337,35 @@ class SpatialTransformPeaks(AbstractTransform):
         else:
             patch_size = self.patch_size
 
-        ret_val = augment_spatial_peaks(data, seg, patch_size=patch_size,
-                                      patch_center_dist_from_border=self.patch_center_dist_from_border,
-                                      do_elastic_deform=self.do_elastic_deform, alpha=self.alpha, sigma=self.sigma,
-                                      do_rotation=self.do_rotation, angle_x=self.angle_x, angle_y=self.angle_y,
-                                      angle_z=self.angle_z, do_scale=self.do_scale, scale=self.scale,
-                                      border_mode_data=self.border_mode_data,
-                                      border_cval_data=self.border_cval_data, order_data=self.order_data,
-                                      border_mode_seg=self.border_mode_seg, border_cval_seg=self.border_cval_seg,
-                                      order_seg=self.order_seg, random_crop=self.random_crop,
-                                      p_el_per_sample=self.p_el_per_sample, p_scale_per_sample=self.p_scale_per_sample,
-                                      p_rot_per_sample=self.p_rot_per_sample, slice_dir=slice_dir)
+        ret_val = augment_spatial_peaks(
+            data,
+            seg,
+            patch_size=patch_size,
+            patch_center_dist_from_border=self.patch_center_dist_from_border,
+            do_elastic_deform=self.do_elastic_deform,
+            alpha=self.alpha,
+            sigma=self.sigma,
+            do_rotation=self.do_rotation,
+            angle_x=self.angle_x,
+            angle_y=self.angle_y,
+            angle_z=self.angle_z,
+            do_scale=self.do_scale,
+            scale=self.scale,
+            border_mode_data=self.border_mode_data,
+            border_cval_data=self.border_cval_data,
+            order_data=self.order_data,
+            border_mode_seg=self.border_mode_seg,
+            border_cval_seg=self.border_cval_seg,
+            order_seg=self.order_seg,
+            random_crop=self.random_crop,
+            p_el_per_sample=self.p_el_per_sample,
+            p_scale_per_sample=self.p_scale_per_sample,
+            p_rot_per_sample=self.p_rot_per_sample,
+            slice_dir=slice_dir,
+        )
 
         data_dict[self.data_key] = ret_val[0]
         if seg is not None:
             data_dict[self.label_key] = ret_val[1]
 
         return data_dict
-

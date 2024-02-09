@@ -56,6 +56,8 @@ def train_model(model):
         writer = SummaryWriter(config.PATH_EXP)
 
     data_loader = DataLoaderTraining()
+    batch_gen_train = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="train", subjects=config.SUBJECTS_TRAIN)
+    batch_gen_val = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="validate", subjects=config.SUBJECTS_VALIDATE)
 
     epoch_times = []
     nr_of_updates = 0
@@ -64,9 +66,6 @@ def train_model(model):
     for type in ["train", "test", "validate"]:
         for metric in config.METRIC_TYPES:
             metrics[metric + "_" + type] = [0]
-
-    batch_gen_train = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="train", subjects=config.SUBJECTS_TRAIN)
-    batch_gen_val = data_loader.get_batch_generator(batch_size=config.BATCH_SIZE, type="validate", subjects=config.SUBJECTS_VALIDATE)
 
     for epoch_nr in range(config.NUM_EPOCHS):
         start_time = time.time()
@@ -297,8 +296,8 @@ def predict_img(model, data_loader, probs=False, scale_to_world_shape=True, only
     batch_generator = list(batch_generator)
     idx = 0
     for batch in tqdm(batch_generator):
-        x = batch["data"]  # (bs, nr_channels, x, y)
-        y = batch["seg"]  # (bs, nr_classes, x, y)
+        x = batch["features"]  # (bs, nr_channels, x, y)
+        y = batch["labels"]  # (bs, nr_classes, x, y)
         y = y.numpy()
 
         if not only_prediction:

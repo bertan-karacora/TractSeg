@@ -224,7 +224,7 @@ def main():
         config.PREDICT_IMG_OUTPUT = args.output
     elif config.PREDICT_IMG:
         config.PREDICT_IMG_OUTPUT = join(os.path.dirname(input_path), config.TRACTSEG_DIR)
-    tensor_model = config.NR_OF_GRADIENTS == 18 * config.NR_SLICES
+    tensor_model = config.NR_OF_GRADIENTS == 18 * config.NUM_SLICES
 
     bvals, bvecs = exp_utils.get_bvals_bvecs_path(args)
     exp_utils.make_dir(config.PREDICT_IMG_OUTPUT)
