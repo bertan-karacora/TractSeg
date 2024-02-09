@@ -148,7 +148,8 @@ def slice_dir_to_int(slice_dir):
         0|1|2 (int)
     """
     if slice_dir == "xyz":
-        slice_direction_int = int(round(random.uniform(0, 2)))
+        # TODO: Think about why the original code was not sampling uniformly here.
+        slice_direction_int = np.random.randint(3)
     elif slice_dir == "x":
         slice_direction_int = 0
     elif slice_dir == "y":
