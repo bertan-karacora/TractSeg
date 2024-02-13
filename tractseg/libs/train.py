@@ -296,8 +296,8 @@ def predict_img(model, data_loader, probs=False, scale_to_world_shape=True, only
     batch_generator = list(batch_generator)
     idx = 0
     for batch in tqdm(batch_generator):
-        x = batch["features"]  # (bs, nr_channels, x, y)
-        y = batch["labels"]  # (bs, nr_classes, x, y)
+        x = batch["data"]  # (bs, nr_channels, x, y)
+        y = batch["seg"]  # (bs, nr_classes, x, y)
         y = y.numpy()
 
         if not only_prediction:
