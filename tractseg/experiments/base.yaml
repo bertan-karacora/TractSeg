@@ -1,4 +1,3 @@
-# TODO: Renaming
 TYPE_EXP: "tract_segmentation" # tract_segmentation|endings_segmentation|dm_regression|peak_regression
 
 # Input data
@@ -10,7 +9,6 @@ DIR_LABELS: "bundle_masks"
 LABELSET: "bundles_all72"
 FILENAME_LABELS: "bundle_masks_cropped.nii.gz"
 
-# TODO: Can be inferred from headers (and experiment type)?
 NR_OF_GRADIENTS: 9
 RESOLUTION: "1.25mm" # 1.25mm|2.5mm
 LABELS_TYPE: "int"
@@ -49,8 +47,7 @@ PEAK_DICE_THR: [0.95]
 PEAK_DICE_LEN_THR: 0.05
 FLIP_OUTPUT_PEAKS: False # flip peaks along z axis to make them compatible with MITK
 USE_VISLOGGER: False
-SEG_INPUT: "Peaks" # Gradients|Peaks
-NR_SLICES: 1
+NUM_SLICES: 1
 PRINT_FREQ: 20
 NORMALIZE_DATA: True
 NORMALIZE_PER_CHANNEL: False

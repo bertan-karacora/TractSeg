@@ -1,4 +1,3 @@
-# TODO: Renaming
 TYPE_EXP: "tract_segmentation" # tract_segmentation|endings_segmentation|dm_regression|peak_regression
 
 # Input data
@@ -10,7 +9,6 @@ DIR_LABELS: "bundle_masks"
 CLASSSET: "bundles_all72"
 FILENAME_LABELS: "bundle_masks_cropped.nii.gz"
 
-# TODO: Can be inferred from headers (and experiment type)?
 NR_OF_GRADIENTS: 9
 RESOLUTION: "1.25mm" # 1.25mm|2.5mm
 TYPE_LABELS: "int"
