@@ -17,7 +17,7 @@ THRESHOLD: 0.5 # Binary: 0.5, Regression: 0.01
 # Hyperparams
 MODEL: "UNet_Pytorch_DeepSup"
 SHAPE_INPUT: [144, 144]
-BATCH_SIZE: 40 # Much smaller than in the paper, therefore more updates, faster (but not better) convergence. Have to because of the hardware I have.
+BATCH_SIZE: 40
 LEARNING_RATE: 0.001 # Don't set larger, if FP16 is set. Else loss will overflow.
 LR_SCHEDULE: True
 LR_SCHEDULE_MODE: "min" # min|max
@@ -27,7 +27,7 @@ EPOCH_MULTIPLIER: 1 # 2D: 1, 3D: 12 for lowRes, 3 for highRes
 NUM_EPOCHS: 250
 TRAINING_SLICE_DIRECTION: "xyz" # y|xyz
 LOSS_FUNCTION: "default" # default|soft_batch_dice
-OPTIMIZER: "Adam"
+OPTIMIZER: "Adamax"
 LOSS_WEIGHT: null # null: no weighting
 LOSS_WEIGHT_LEN: -1 # -1: constant over all epochs
 BATCH_NORM: False
@@ -48,7 +48,6 @@ NUM_SLICES: 1
 PRINT_FREQ: 20
 NORMALIZE_SLICES: True
 NORMALIZE_PER_CHANNEL: False
-BEST_EPOCH: 0
 CALC_F1: True
 TEST_TIME_DAUG: False
 PAD_TO_SQUARE: True
@@ -65,7 +64,7 @@ DAUG_SIGMA: [9.0, 11.0]
 DAUG_RESAMPLE: False # does not improve validation dice (if using Gaussian_blur) -> deactivate
 DAUG_GAUSSIAN_BLUR: True
 DAUG_BLUR_SIGMA: [0, 1]
-DAUG_ROTATE: False
+DAUG_ROTATE: True
 DAUG_ROTATE_ANGLE: [-0.78539816339, 0.78539816339] # rotation: 2*np.pi: 360 degree  (0.4 ~= 22 degree, 0.2 ~= 11 degree))
 SPATIAL_TRANSFORM: "SpatialTransformPeaks" # SpatialTransform|SpatialTransformPeaks
 P_SAMP: 1.0

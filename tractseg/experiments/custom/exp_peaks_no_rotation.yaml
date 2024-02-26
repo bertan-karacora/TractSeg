@@ -64,7 +64,7 @@ DAUG_SIGMA: [9.0, 11.0]
 DAUG_RESAMPLE: False # does not improve validation dice (if using Gaussian_blur) -> deactivate
 DAUG_GAUSSIAN_BLUR: True
 DAUG_BLUR_SIGMA: [0, 1]
-DAUG_ROTATE: True
+DAUG_ROTATE: False
 DAUG_ROTATE_ANGLE: [-0.78539816339, 0.78539816339] # rotation: 2*np.pi: 360 degree  (0.4 ~= 22 degree, 0.2 ~= 11 degree))
 SPATIAL_TRANSFORM: "SpatialTransformPeaks" # SpatialTransform|SpatialTransformPeaks
 P_SAMP: 1.0
