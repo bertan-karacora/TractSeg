@@ -51,14 +51,19 @@ def save_img(path, img, img_header=None, affine=None):
 
 
 def reorder_channels_fodf(img):
-    # bonndit output: (16, x, y, z)
+    # Bonndit output: (16, x, y, z)
     img = img[1:].transpose(1, 2, 3, 0)
     return img
 
 
 def reorder_channels_rank_k(img):
-    # bonndit output: (4, r, x, y, z)
-    img = img[1:].transpose(2, 3, 4, 1, 0)
+    # Bonndit output: (4, r, x, y, z)
+    # Low-rank approximation from bonndit is always from 4th-order tensors.
+    order = 4
+    np.power(img[0], 1.0 / order)
+
+    img = img[1:] * np.power(img[0], 1.0 / order)
+    img = img.transpose(2, 3, 4, 1, 0)
     img = img.reshape(*img.shape[:-2], -1)
     return img
 
