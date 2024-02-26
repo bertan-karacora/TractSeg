@@ -37,7 +37,8 @@ def setup_config(args):
     )
     config.CLASSES = tractseg.data.dataset_specific_utils.get_classes(config.CLASSSET)
 
-    config.save(Path(config.PATH_EXP))
+    if config.TRAIN:
+        config.save(Path(config.PATH_EXP))
 
     if config.VERBOSE:
         print("Config:")
@@ -85,7 +86,7 @@ def main():
     args = parse_args()
 
     path_exp = Path(config.PATH_DIR_EXP) / args.name_exp
-    path_exp = tractseg.libs.exp_utils.mkdir_exp(path_exp, use_existing=not args.train)
+    path_exp = tractseg.libs.exp_utils.mkdir_exp(path_exp, use_existing=(not args.train) or args.load_weights)
     config.PATH_EXP = str(path_exp)
     setup_config(args)
 
