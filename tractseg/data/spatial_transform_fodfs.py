@@ -9,9 +9,9 @@ def get_inner(a, b):
     """Vectorized version of bonndit's tensor dot function."""
     assert len(a) == len(b)
     order = bd.utils.tensor.get_order(a[0])
-    multiplier = np.asarray(bd.utils.tensor.MULTIPLIER[order])
+    multiplicities = np.asarray(bd.utils.tensor.MULTIPLIER[order])
 
-    products = np.sum(a * b * multiplier[:, np.newaxis, np.newaxis], axis=0)
+    products = np.sum(a * b * multiplicities[:, np.newaxis, np.newaxis], axis=0)
 
     return products
 
@@ -195,10 +195,9 @@ def augment_spatial(
 
 
 class SpatialTransformFodfs(AbstractTransform):
-    """The ultimate spatial transform generator. Rotation, deformation, scaling, cropping: It has all you ever dreamed
-    of. Computational time scales only with shape_input, not with input patch size or type of augmentations used.
+    """Rotation, deformation, scaling, cropping. Computational time scales only with shape_input, not with input patch size or type of augmentations used.
     Internally, this transform will use a coordinate grid of shape shape_input to which the transformations are
-    applied (very fast). Interpolation on the image data will only be done at the very end
+    applied. Interpolation on the image data will only be done at the very end.
 
     Args:
         shape_input (tuple/list/ndarray of int): Output patch size
@@ -250,6 +249,7 @@ class SpatialTransformFodfs(AbstractTransform):
         sigma=(10.0, 13.0),
         do_rotation=True,
         angle_x=(0, 2 * np.pi),
+        # Unused but needed to keep it consistent with batchgenerators.
         angle_y=(0, 2 * np.pi),
         angle_z=(0, 2 * np.pi),
         do_scale=True,
@@ -265,7 +265,7 @@ class SpatialTransformFodfs(AbstractTransform):
         p_scale_per_sample=1,
         p_rot_per_sample=1,
     ):
-        # This is bad but necessary to keep the same signature as batchgenerators.
+        # This is bad but necessary to keep the same call signature as batchgenerators' spatial transform API.
         self.shape_input = shape_input
         self.random_crop = random_crop
         self.dist_center = patch_center_dist_from_border

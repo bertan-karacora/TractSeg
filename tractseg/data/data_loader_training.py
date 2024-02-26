@@ -18,6 +18,7 @@ import nrrd
 import tractseg.config as config
 from tractseg.data.spatial_transform_peaks import SpatialTransformPeaks
 from tractseg.data.spatial_transform_fodfs import SpatialTransformFodfs
+from tractseg.data.noise_transform_fodfs import GaussianNoiseTransformFodfs
 from tractseg.libs import data_utils
 from tractseg.libs import exp_utils
 
@@ -135,12 +136,16 @@ class BatchGenerator(SlimDataLoaderBase):
 
 class DataLoaderTraining:
     def _augment_data(self, batch_generator, type=None, num_threads=None):
+        # Not beautiful but better than the originally in TractSeg.
         if config.SPATIAL_TRANSFORM == "SpatialTransformFodfs":
             SpatialTransformUsed = SpatialTransformFodfs
+            NoiseTransformUsed = GaussianNoiseTransformFodfs
         elif config.SPATIAL_TRANSFORM == "SpatialTransformPeaks":
             SpatialTransformUsed = SpatialTransformPeaks
+            NoiseTransformUsed = GaussianNoiseTransform
         else:
             SpatialTransformUsed = SpatialTransform
+            NoiseTransformUsed = GaussianNoiseTransform
 
         tfs = []
 
@@ -185,7 +190,7 @@ class DataLoaderTraining:
                 )
 
             if config.DAUG_NOISE:
-                tfs.append(GaussianNoiseTransform(noise_variance=tuple(config.DAUG_NOISE_VARIANCE), p_per_sample=config.P_SAMP))
+                tfs.append(NoiseTransformUsed(noise_variance=tuple(config.DAUG_NOISE_VARIANCE), p_per_sample=config.P_SAMP))
 
         tfs.append(NumpyToTensor(keys=["data", "seg"], cast_to="float"))
 
