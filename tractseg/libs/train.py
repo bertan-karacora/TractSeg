@@ -351,7 +351,7 @@ def test_whole_subject(model, subjects, type):
         "loss_" + type: [0],
         "f1_macro_" + type: [0],
     }
-
+    f1_scores = []
     metrics_bundles = defaultdict(lambda: [0])
 
     for subject in subjects:
@@ -359,7 +359,6 @@ def test_whole_subject(model, subjects, type):
         start_time = time.time()
 
         data_loader = DataLoaderInference(subject=subject)
-        # img_probs, img_y = predict_img(model, data_loader, probs=True)
         img_probs_xyz, img_y = direction_merger.get_seg_single_img_3_directions(model, subject=subject)
         img_probs = direction_merger.mean_fusion(config.THRESHOLD, img_probs_xyz, probs=True)
 
@@ -370,26 +369,28 @@ def test_whole_subject(model, subjects, type):
                 config.CLASSSET, img_probs, img_y, max_angle_error=config.PEAK_DICE_THR, max_length_error=config.PEAK_DICE_LEN_THR
             )
             peak_f1_mean = np.array([s for s in f1.values()]).mean()  # if f1 for multiple bundles
-            metrics = metric_utils.calculate_metrics(metrics, None, None, 0, f1=peak_f1_mean, type=type, threshold=config.THRESHOLD)
+            metrics, f1_score = metric_utils.calculate_metrics(metrics, None, None, 0, f1=peak_f1_mean, type=type, threshold=config.THRESHOLD)
             metrics_bundles = metric_utils.calculate_metrics_each_bundle(metrics_bundles, None, None, config.CLASSES, f1, threshold=config.THRESHOLD)
         else:
             img_probs = np.reshape(img_probs, (-1, img_probs.shape[-1]))  # Flatten all dims except nr_classes dim
             img_y = np.reshape(img_y, (-1, img_y.shape[-1]))
-            metrics = metric_utils.calculate_metrics(metrics, img_y, img_probs, 0, type=type, threshold=config.THRESHOLD)
+            metrics, f1_score = metric_utils.calculate_metrics(metrics, img_y, img_probs, 0, type=type, threshold=config.THRESHOLD)
             metrics_bundles = metric_utils.calculate_metrics_each_bundle(
                 metrics_bundles, img_y, img_probs, config.CLASSES, threshold=config.THRESHOLD
             )
+        f1_scores += [f1_score]
 
     metrics = metric_utils.normalize_last_element(metrics, len(subjects), type=type)
     metrics_bundles = metric_utils.normalize_last_element_general(metrics_bundles, len(subjects))
 
-    print("WHOLE SUBJECT:")
-    pprint(metrics)
-    print("WHOLE SUBJECT BUNDLES:")
-    pprint(metrics_bundles)
+    experiment = {
+        "metrics": metrics,
+        "metrics_bundles": metrics_bundles,
+        "f1_scores": f1_scores,
+    }
+    pprint(experiment)
 
-    with open(join(config.PATH_EXP, "score_" + type + "-set.txt"), "w") as f:
-        pprint(metrics, f)
-        pprint(metrics_bundles, f)
-    pickle.dump(metrics, open(join(config.PATH_EXP, "score_" + type + ".pkl"), "wb"))
+    with open(join(config.PATH_EXP, f"experiment_{type}-set.txt"), "w") as f:
+        pprint(experiment, f)
+    pickle.dump(experiment, open(join(config.PATH_EXP, f"experiment_{type}.pkl"), "wb"))
     return metrics

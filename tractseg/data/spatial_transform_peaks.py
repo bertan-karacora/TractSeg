@@ -204,8 +204,6 @@ def augment_spatial_peaks(
         elif slice_dir == 1:
             a_y = sampled_2D_angle
         elif slice_dir == 2:
-            # Somehow we have to invert rotation direction for z to make align properly with rotated voxels.
-            # Unclear why this is the case. Maybe some different conventions for peaks and voxels??
             a_z = sampled_2D_angle
         else:
             raise ValueError("invalid slice_dir passed as argument")

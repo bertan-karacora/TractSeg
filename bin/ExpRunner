@@ -21,7 +21,8 @@ def parse_args():
     parser.add_argument("--train", action="store_true", help="Train network")
     parser.add_argument("--test", action="store_true", help="Test network")
     parser.add_argument("--validate", action="store_true", help="Validate")
-    parser.add_argument("--probmaps", action="store_true", help="Create probmap segmentation")
+    parser.add_argument("--probmaps", action="store_true", help="Create probmap segmentations")
+    parser.add_argument("--segmentations", action="store_true", help="Create segmentations")
     parser.add_argument("--cvfold", metavar="N", help="Which fold to train when doing CrossValidation", type=int, default=0)
 
     args = parser.parse_args()
@@ -56,7 +57,7 @@ def train(model, shape_input):
 
 def test(model, subjects):
     print("Testing...")
-    metrics = tractseg.libs.train.test_whole_subject(model, subjects, "validate")
+    metrics = tractseg.libs.train.test_whole_subject(model, subjects, "test")
     print("Testing finished.")
     return metrics
 
@@ -82,6 +83,27 @@ def save_probmaps(model, subjects, threshold=0.5):
     print("Creating probmaps finished.")
 
 
+def save_segmentations(model, subjects, threshold=0.5):
+    print("Creating segmentations...")
+
+    path_segmentations = Path(config.PATH_EXP) / "segmentations"
+    path_segmentations.mkdir(parents=True, exist_ok=True)
+
+    for subject in subjects:
+        print(f"Creating segmentations for subject {subject}")
+        img_segmentation, img_y = tractseg.libs.direction_merger.get_seg_single_img_3_directions(model, subject)
+        img_segmentation = tractseg.libs.direction_merger.mean_fusion(threshold, img_segmentation, probs=False)
+
+        path_labels = Path(config.PATH_DATA) / subject / config.DIR_LABELS / config.FILENAME_LABELS
+        affine = nib.load(path_labels).affine
+        img = nib.Nifti1Image(img_segmentation, affine)
+
+        path_segmentation = path_segmentations / f"{subject}_segmentation.nii.gz"
+        nib.save(img, path_segmentation)
+
+    print("Creating segmentations finished.")
+
+
 def main():
     args = parse_args()
 
@@ -100,10 +122,13 @@ def main():
         model = tractseg.libs.exp_utils.load_weights(model, tractseg.libs.exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
 
     if config.TEST:
-        test(model, config.SUBJECTS_VALIDATE)
+        test(model, config.SUBJECTS_TEST)
 
     if config.PROBMAPS:
-        save_probmaps(model, config.SUBJECTS_VALIDATE, config.THRESHOLD)
+        save_probmaps(model, config.SUBJECTS_TEST, config.THRESHOLD)
+
+    if config.SEGMENTATIONS:
+        save_segmentations(model, config.SUBJECTS_TEST, config.THRESHOLD)
 
 
 if __name__ == "__main__":

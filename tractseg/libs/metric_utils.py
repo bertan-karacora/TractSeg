@@ -139,7 +139,8 @@ def calculate_metrics(metrics, y, class_probs, loss, f1=None, f1_per_bundle=None
 
     metrics["loss_" + type][-1] += loss
     if f1 is None:
-        metrics["f1_macro_" + type][-1] += my_f1_score_macro(y, pred_class)
+        f1_score = my_f1_score_macro(y, pred_class)
+        metrics["f1_macro_" + type][-1] += f1_score
     else:
         metrics["f1_macro_" + type][-1] += f1
         if f1_per_bundle is not None:
@@ -148,7 +149,7 @@ def calculate_metrics(metrics, y, class_probs, loss, f1=None, f1_per_bundle=None
                     metrics["f1_" + key + "_" + type] = [0]
                 metrics["f1_" + key + "_" + type][-1] += f1_per_bundle[key]
 
-    return metrics
+    return metrics, f1_score
 
 
 def add_to_metrics(metrics, metr_batch, type, metric_types):
