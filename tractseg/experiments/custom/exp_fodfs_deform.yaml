@@ -1,6 +1,7 @@
 TYPE_EXP: "tract_segmentation" # tract_segmentation|endings_segmentation|dm_regression|peak_regression
 
 # Input data
+# TODO: net summary -> weights number
 DATASET: "HCP105"
 PATH_DATA: "/data/HCP"
 DIR_FEATURES: "mtdeconv"
@@ -30,7 +31,7 @@ LOSS_FUNCTION: "default" # default|soft_batch_dice
 OPTIMIZER: "Adamax"
 LOSS_WEIGHT: null # null: no weighting
 LOSS_WEIGHT_LEN: -1 # -1: constant over all epochs
-BATCH_NORM: False
+BATCH_NORM: False # TODO
 WEIGHT_DECAY: 0
 USE_DROPOUT: True # slightly less overfitting (but max f1_validate maybe slightly worse (makes sense if less overfitting))
 DROPOUT_SAMPLING: False
@@ -54,14 +55,14 @@ DAUG_RESCALING: [0.9, 1.5]
 DAUG_SCALE: True
 DAUG_NOISE: True
 DAUG_NOISE_VARIANCE: [0, 0.05]
-DAUG_ELASTIC_DEFORM: False
+DAUG_ELASTIC_DEFORM: True
 DAUG_ALPHA: [90.0, 120.0]
 DAUG_SIGMA: [9.0, 11.0]
 DAUG_RESAMPLE: False # does not improve validation dice (if using Gaussian_blur) -> deactivate
-DAUG_GAUSSIAN_BLUR: True
+DAUG_GAUSSIAN_BLUR: True # TODO
 DAUG_BLUR_SIGMA: [0, 1]
 DAUG_ROTATE: True
-DAUG_ROTATE_ANGLE: [-0.78539816339, 0.78539816339] # rotation: 2*np.pi: 360 degree  (0.4 ~= 22 degree, 0.2 ~= 11 degree))
+DAUG_ROTATE_ANGLE: [-0.4, 0.4] # rotation: 2*np.pi: 360 degree  (0.4 ~= 22 degree, 0.2 ~= 11 degree))
 SPATIAL_TRANSFORM: "SpatialTransformFodfs" # SpatialTransform|SpatialTransformPeaks|SpatialTransformFodfs
 P_SAMP: 1.0
 # Don't forget random_crop is selected by default.
