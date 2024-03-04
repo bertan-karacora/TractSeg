@@ -383,6 +383,7 @@ def test_whole_subject(model, subjects, type):
     metrics = metric_utils.normalize_last_element(metrics, len(subjects), type=type)
     metrics_bundles = metric_utils.normalize_last_element_general(metrics_bundles, len(subjects))
 
+    metrics_bundles = dict(metrics_bundles)
     experiment = {
         "metrics": metrics,
         "metrics_bundles": metrics_bundles,
