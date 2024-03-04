@@ -4,6 +4,8 @@ import numpy as np
 from batchgenerators.transforms.abstract_transforms import AbstractTransform
 import batchgenerators.augmentations as bgaug
 
+import tractseg.config as config
+
 
 def get_inner(a, b):
     """Vectorized version of bonndit's tensor dot function."""
@@ -189,7 +191,11 @@ def augment_spatial(
             else:
                 raise ValueError("Invalid direction_slicing passed as argument.")
 
-            features_augmented[sample_id] = rotate_fodfs(features_augmented[sample_id], angle_x, angle_y, angle_z)
+            # This is so bad (because hard-coded) but my time is running out.
+            if "exp_fodfs_t1_wmmask.yaml" in config.PATH_CONFIG_EXP:
+                features_augmented[sample_id][:15] = rotate_fodfs(features_augmented[sample_id][:15], angle_x, angle_y, angle_z)
+            else:
+                features_augmented[sample_id] = rotate_fodfs(features_augmented[sample_id], angle_x, angle_y, angle_z)
 
     return features_augmented, labels_augmented
 

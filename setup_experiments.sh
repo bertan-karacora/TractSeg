@@ -314,6 +314,36 @@ crop() {
     done
     wait
 
+    num_processes=12
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Cropping features and tracts for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
+
+        python tractseg/utils/crop.py \
+            -i $dir_subject/T1w_acpc_dc_restore_1.25.nii.gz \
+            -o $dir_subject/T1w_cropped.nii.gz \
+            --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
+    done
+    wait
+
+    num_processes=12
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Cropping features and tracts for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
+
+        python tractseg/utils/crop.py \
+            -i $dir_subject/5tt/fast_first.nii.gz \
+            -o $dir_subject/5tt/fast_first_cropped.nii.gz \
+            --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
+    done
+    wait
+
     num_processes=6
     for id_subject in ${ids_subject[@]}; do
         ((i = i % num_processes))
@@ -388,6 +418,38 @@ preprocess() {
             -i $dir_subject/mtdeconv/fodf_cropped.nrrd \
             -o $dir_subject/mtdeconv/fodf_preprocessed.nii.gz \
             --type fodfs &
+    done
+    wait
+
+    num_processes=6
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Preprocessing features for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
+
+        python tractseg/utils/preprocess.py \
+            -i $dir_subject/mtdeconv/fodf_cropped.nrrd \
+            -o $dir_subject/mtdeconv/fodf_preprocessed_t1_wmmask.nii.gz \
+            -t $dir_subject/T1w_cropped.nii.gz \
+            -m $dir_subject/5tt/fast_first_cropped.nii.gz \
+            --type combined_t1_wmmask &
+    done
+    wait
+
+    num_processes=6
+    for id_subject in ${ids_subject[@]}; do
+        ((i = i % num_processes))
+        ((i++ == 0)) && wait
+        echo "Preprocessing features for subject $id_subject."
+
+        dir_subject=$dir_data/$id_subject
+
+        python tractseg/utils/preprocess.py \
+            -i $dir_subject/peaks/peaks_cropped.nii.gz \
+            -o $dir_subject/peaks/peaks_preprocessed_tensor.nii.gz \
+            --type peaks_tensor &
     done
     wait
 

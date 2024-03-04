@@ -27,7 +27,9 @@ def augment_gaussian_noise(
                 else noise_variance[0] if noise_variance[0] == noise_variance[1] else np.random.uniform(noise_variance[0], noise_variance[1])
             )
 
-            variance_here /= multiplicities[c]
+            # Assume fODF components are in first channels (in case of combined input).
+            if c < len(multiplicities):
+                variance_here /= multiplicities[c]
 
             data_sample[c] = data_sample[c] + np.random.normal(0.0, variance_here, size=data_sample[c].shape)
     return data_sample
