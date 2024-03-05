@@ -5,6 +5,8 @@ import numpy as np
 
 from batchgenerators.transforms.abstract_transforms import AbstractTransform
 
+import tractseg.config as config
+
 
 def augment_gaussian_noise(
     data_sample: np.ndarray,
@@ -12,7 +14,11 @@ def augment_gaussian_noise(
     p_per_channel: float = 1,
     per_channel: bool = False,
 ) -> np.ndarray:
-    order = bd.utils.tensor.get_order(data_sample[:, 0, 0])
+    # This is so bad (because hard-coded) but my time is running out.
+    if "exp_fodfs_t1_wmmask.yaml" in config.PATH_CONFIG_EXP:
+        order = 4
+    else:
+        order = bd.utils.tensor.get_order(data_sample[:, 0, 0])
     multiplicities = np.asarray(bd.utils.tensor.MULTIPLIER[order])
 
     variance = None
