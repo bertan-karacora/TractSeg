@@ -27,7 +27,7 @@ def get_path_config_pretrained(input_type, output_type, dropout_sampling=False, 
     else:
         raise ValueError(f"ERROR: Unsupported combination: {tract_definition}, {input_type}, {output_type}, {dropout_sampling}")
 
-    path = importlib_resources.files("tractseg.experiments.pretrained_models") / filename_config_experiment
+    path = importlib_resources.files("tractseg.configs.pretrained_models") / filename_config_experiment
     return path
 
 

@@ -129,16 +129,20 @@ dmypy.json
 .pyre/
 
 # Explicit dependencies
-libs/
+libs/*
+!libs/.gitkeep
 !/tractseg/libs/
 
 # Data
 # I recommend creating symlinks to any desired dataset directories and collecting them in this data directory.
-data/
+data/*
+!data/.gitkeep
 !/tractseg/data/
 
 # Output
-out/
+out/*
+!out/.gitkeep
 
 # Weights
-weights/
+weights/*
+!weights/.gitkeep

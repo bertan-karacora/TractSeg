@@ -1,0 +1,135 @@
+from pathlib import Path
+import time
+
+import argparse
+import nibabel as nib
+
+import tractseg.config as config
+import tractseg.data.dataset_specific_utils
+import tractseg.libs.direction_merger
+import tractseg.libs.exp_utils
+import tractseg.libs.train
+from tractseg.models.base_model import BaseModel
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train a network on your own data to segment white matter bundles.")
+    parser.add_argument("--name_exp", metavar="name", help="Experiment name", default=time.strftime("%Y_%m_%d-%H_%M_%S"))
+    parser.add_argument("--verbose", action="store_true", help="Show more intermediate output")
+    parser.add_argument("--path_config_exp", metavar="path", help="Path of experiment configuration to use", required=True)
+    parser.add_argument("--load_weights", action="store_true", help="Load weights of pretrained net")
+    parser.add_argument("--train", action="store_true", help="Train network")
+    parser.add_argument("--test", action="store_true", help="Test network")
+    parser.add_argument("--validate", action="store_true", help="Validate")
+    parser.add_argument("--probmaps", action="store_true", help="Create probmap segmentations")
+    parser.add_argument("--segmentations", action="store_true", help="Create segmentations")
+    parser.add_argument("--cvfold", metavar="N", help="Which fold to train when doing CrossValidation", type=int, default=0)
+
+    args = parser.parse_args()
+    return args
+
+
+def setup_config(args):
+    config.set_attributes(vars(args))
+    config.set_config_exp(Path(config.PATH_CONFIG_EXP))
+    config.SUBJECTS = tractseg.data.dataset_specific_utils.get_subjects(config.DATASET)
+    config.SUBJECTS_TRAIN, config.SUBJECTS_VALIDATE, config.SUBJECTS_TEST = tractseg.data.dataset_specific_utils.get_cvfold(
+        config.DATASET, config.CVFOLD
+    )
+    config.CLASSES = tractseg.data.dataset_specific_utils.get_classes(config.CLASSSET)
+
+    if config.TRAIN:
+        config.save(Path(config.PATH_EXP))
+
+    if config.VERBOSE:
+        print("Config:")
+        config.dump()
+
+
+def train(model, shape_input):
+    print("Training...")
+
+    tractseg.libs.train.train_model(model)
+
+    print("Training finished.")
+    return model
+
+
+def test(model, subjects):
+    print("Testing...")
+    metrics = tractseg.libs.train.test_whole_subject(model, subjects, "test")
+    print("Testing finished.")
+    return metrics
+
+
+def save_probmaps(model, subjects, threshold=0.5):
+    print("Creating probmaps...")
+
+    path_probmaps = Path(config.PATH_EXP) / "probmaps"
+    path_probmaps.mkdir(parents=True, exist_ok=True)
+
+    for subject in subjects:
+        print(f"Creating probmaps for subject {subject}")
+        img_probs, img_y = tractseg.libs.direction_merger.get_seg_single_img_3_directions(model, subject)
+        img_probs = tractseg.libs.direction_merger.mean_fusion(threshold, img_probs, probs=True)
+
+        path_labels = Path(config.PATH_DATA) / subject / config.DIR_LABELS / config.FILENAME_LABELS
+        affine = nib.load(path_labels).affine
+        img = nib.Nifti1Image(img_probs, affine)
+
+        path_probmap = path_probmaps / f"{subject}_probmap.nii.gz"
+        nib.save(img, path_probmap)
+
+    print("Creating probmaps finished.")
+
+
+def save_segmentations(model, subjects, threshold=0.5):
+    print("Creating segmentations...")
+
+    path_segmentations = Path(config.PATH_EXP) / "segmentations"
+    path_segmentations.mkdir(parents=True, exist_ok=True)
+
+    for subject in subjects:
+        print(f"Creating segmentations for subject {subject}")
+        img_segmentation, img_y = tractseg.libs.direction_merger.get_seg_single_img_3_directions(model, subject)
+        img_segmentation = tractseg.libs.direction_merger.mean_fusion(threshold, img_segmentation, probs=False)
+
+        path_labels = Path(config.PATH_DATA) / subject / config.DIR_LABELS / config.FILENAME_LABELS
+        affine = nib.load(path_labels).affine
+        img = nib.Nifti1Image(img_segmentation, affine)
+
+        path_segmentation = path_segmentations / f"{subject}_segmentation.nii.gz"
+        nib.save(img, path_segmentation)
+
+    print("Creating segmentations finished.")
+
+
+def main():
+    args = parse_args()
+
+    path_exp = Path(config.PATH_DIR_EXP) / args.name_exp
+    path_exp = tractseg.libs.exp_utils.mkdir_exp(path_exp, use_existing=(not args.train) or args.load_weights)
+    config.PATH_EXP = str(path_exp)
+    setup_config(args)
+
+    model = BaseModel()
+
+    if config.LOAD_WEIGHTS:
+        model = tractseg.libs.exp_utils.load_weights(model, tractseg.libs.exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
+
+    if config.TRAIN:
+        model = train(model, config.SHAPE_INPUT)
+        model = tractseg.libs.exp_utils.load_weights(model, tractseg.libs.exp_utils.get_best_weights_path(Path(config.PATH_EXP)))
+
+    if config.TEST:
+        test(model, config.SUBJECTS_TEST)
+
+    if config.PROBMAPS:
+        save_probmaps(model, config.SUBJECTS_TEST, config.THRESHOLD)
+
+    if config.SEGMENTATIONS:
+        save_segmentations(model, config.SUBJECTS_TEST, config.THRESHOLD)
+
+
+if __name__ == "__main__":
+    main()

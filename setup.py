@@ -34,10 +34,10 @@ setuptools.setup(
         "Operating System :: MacOS",
     ],
     scripts=[
-        "bin/TractSeg",
-        "bin/ExpRunner",
-        "bin/Tractometry",
-        "bin/Tracking",
+        "scripts/TractSeg",
+        "scripts/ExpRunner",
+        "scripts/Tractometry",
+        "scripts/Tracking",
     ],
     include_package_data=True,
 )

@@ -50,7 +50,7 @@ mask_tracts() {
             name_tract=$(basename ${file_trk%.*})
             echo "Masking $name_tract for subject $id_subject."
 
-            python tractseg/utils/mask.py \
+            python utils/mask.py \
                 -i $file_trk \
                 -o $dir_out/$name_tract.nii.gz \
                 --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
@@ -75,10 +75,10 @@ concat() {
         dir_out=$dir_subject/bundle_masks
         mkdir -p $dir_out
 
-        python tractseg/utils/concat.py \
+        python utils/concat.py \
             -i $dir_subject/tracts_masks \
             -o $dir_out/bundle_masks.nii.gz \
-            --path_config_exp /home/lab1/TractSeg/tractseg/experiments/custom/exp_peaks.yaml &
+            --path_config_exp /home/lab1/TractSeg/tractseg/configs/custom/exp_peaks.yaml &
     done
     wait
 
@@ -275,7 +275,7 @@ crop() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/crop.py \
+        python utils/crop.py \
             -i $dir_subject/peaks/peaks.nii.gz \
             -o $dir_subject/peaks/peaks_cropped.nii.gz \
             --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
@@ -290,7 +290,7 @@ crop() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/crop.py \
+        python utils/crop.py \
             -i $dir_subject/fodf_low_rank/fodf_approx_rank_3.nrrd \
             -o $dir_subject/fodf_low_rank/fodf_approx_rank_3_cropped.nrrd \
             --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz \
@@ -306,7 +306,7 @@ crop() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/crop.py \
+        python utils/crop.py \
             -i $dir_subject/mtdeconv/fodf.nrrd \
             -o $dir_subject/mtdeconv/fodf_cropped.nrrd \
             --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz \
@@ -322,7 +322,7 @@ crop() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/crop.py \
+        python utils/crop.py \
             -i $dir_subject/T1w_acpc_dc_restore_1.25.nii.gz \
             -o $dir_subject/T1w_cropped.nii.gz \
             --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
@@ -337,7 +337,7 @@ crop() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/crop.py \
+        python utils/crop.py \
             -i $dir_subject/5tt/fast_first.nii.gz \
             -o $dir_subject/5tt/fast_first_cropped.nii.gz \
             --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
@@ -352,7 +352,7 @@ crop() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/crop.py \
+        python utils/crop.py \
             -i $dir_subject/bundle_masks/bundle_masks.nii.gz \
             -o $dir_subject/bundle_masks/bundle_masks_cropped.nii.gz \
             --ref $dir_subject/Diffusion/nodif_brain_mask.nii.gz &
@@ -365,21 +365,21 @@ crop() {
 crop_union() {
     echo "Cropping features and tracts..."
 
-    python tractseg/utils/crop_union.py \
-        --path_config_exp /home/lab1/TractSeg/tractseg/experiments/custom/exp_peaks.yaml \
+    python utils/crop_union.py \
+        --path_config_exp /home/lab1/TractSeg/tractseg/configs/custom/exp_peaks.yaml \
         --filename_features peaks.nii.gz \
         --filename_labels bundle_masks.nii.gz \
         --ref Diffusion/nodif_brain_mask.nii.gz
 
-    python tractseg/utils/crop_union.py \
-        --path_config_exp /home/lab1/TractSeg/tractseg/experiments/custom/exp_low_rank.yaml \
+    python utils/crop_union.py \
+        --path_config_exp /home/lab1/TractSeg/tractseg/configs/custom/exp_low_rank.yaml \
         --filename_features fodf_approx_rank_3.nrrd \
         --filename_labels bundle_masks.nii.gz \
         --ref Diffusion/nodif_brain_mask.nii.gz \
         --spatial_channels_last
 
-    python tractseg/utils/crop_union.py \
-        --path_config_exp /home/lab1/TractSeg/tractseg/experiments/custom/exp_fodfs.yaml \
+    python utils/crop_union.py \
+        --path_config_exp /home/lab1/TractSeg/tractseg/configs/custom/exp_fodfs.yaml \
         --filename_features fodf.nrrd \
         --filename_labels bundle_masks.nii.gz \
         --ref Diffusion/nodif_brain_mask.nii.gz \
@@ -399,7 +399,7 @@ preprocess() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/preprocess.py \
+        python utils/preprocess.py \
             -i $dir_subject/fodf_low_rank/fodf_approx_rank_3_cropped.nrrd \
             -o $dir_subject/fodf_low_rank/fodf_approx_rank_3_preprocessed.nii.gz \
             --type rank_k &
@@ -414,7 +414,7 @@ preprocess() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/preprocess.py \
+        python utils/preprocess.py \
             -i $dir_subject/mtdeconv/fodf_cropped.nrrd \
             -o $dir_subject/mtdeconv/fodf_preprocessed.nii.gz \
             --type fodfs &
@@ -429,7 +429,7 @@ preprocess() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/preprocess.py \
+        python utils/preprocess.py \
             -i $dir_subject/mtdeconv/fodf_cropped.nrrd \
             -o $dir_subject/mtdeconv/fodf_preprocessed_t1_wmmask.nii.gz \
             -t $dir_subject/T1w_cropped.nii.gz \
@@ -446,7 +446,7 @@ preprocess() {
 
         dir_subject=$dir_data/$id_subject
 
-        python tractseg/utils/preprocess.py \
+        python utils/preprocess.py \
             -i $dir_subject/peaks/peaks_cropped.nii.gz \
             -o $dir_subject/peaks/peaks_preprocessed_tensor.nii.gz \
             --type peaks_tensor &
